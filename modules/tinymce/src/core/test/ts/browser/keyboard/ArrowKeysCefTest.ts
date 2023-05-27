@@ -1,13 +1,12 @@
 import { Keys, Waiter } from '@ephox/agar';
 import { describe, it } from '@ephox/bedrock-client';
-import { TinyAssertions, TinyContentActions, TinyHooks, TinySelections } from '@ephox/mcagar';
+import { TinyAssertions, TinyContentActions, TinyHooks, TinySelections } from '@ephox/wrap-mcagar';
 import { assert } from 'chai';
 
 import Editor from 'tinymce/core/api/Editor';
 import Env from 'tinymce/core/api/Env';
 import * as CaretContainer from 'tinymce/core/caret/CaretContainer';
 import * as NodeType from 'tinymce/core/dom/NodeType';
-import Theme from 'tinymce/themes/silver/Theme';
 
 import * as KeyUtils from '../../module/test/KeyUtils';
 
@@ -20,7 +19,7 @@ describe('browser.tinymce.core.keyboard.ArrowKeysCefTest', () => {
       editor.on('ScrollIntoView', () => scrollIntoViewCount++);
       editor.on('keydown', () => keydownCount++);
     }
-  }, [ Theme ], true);
+  }, [], true);
   let scrollIntoViewCount = 0;
   let keydownCount = 0;
 
@@ -149,7 +148,7 @@ describe('browser.tinymce.core.keyboard.ArrowKeysCefTest', () => {
     editor.setContent('<p>Line 1</p><p><video height="400" width="200" src="custom/video.mp4" contenteditable="false"></video> Line 2</p><p>Line 3 with some more text</p>');
     await pMediaWait();
     scrollTo(editor, 0, 400);
-    TinySelections.setCursor(editor, [ 2, 0 ], 26);
+    TinySelections.setCursor(editor, [ 2, 0 ], 22);
     resetScrollCount();
     TinyContentActions.keystroke(editor, Keys.up());
     assertScrollCount(1);
@@ -183,5 +182,27 @@ describe('browser.tinymce.core.keyboard.ArrowKeysCefTest', () => {
     TinyContentActions.keystroke(editor, Keys.down());
     // Checking 2 events fired verifies the event handlers finished running, so an exception shouldn't have been raised
     assertKeydownCount(2);
+  });
+
+  it('TINY-9565: Should navigate CEFs in reverse if the element has a dir attribute of rtl', () => {
+    const editor = hook.editor();
+    editor.setContent('<p dir="rtl">&#x5e2;&#x5b4;&#x5d1;<span contenteditable="false">CEF</span><span contenteditable="false">CEF</span>&#x5e2;&#x5b4;&#x5d1;</p>');
+    TinySelections.setCursor(editor, [ 0, 0 ], 3);
+    TinyContentActions.keystroke(editor, Keys.left());
+    TinyAssertions.assertSelection(editor, [ 0 ], 1, [ 0 ], 2);
+    TinyContentActions.keystroke(editor, Keys.left());
+    TinyAssertions.assertCursor(editor, [ 0, 2 ], 0);
+    TinyContentActions.keystroke(editor, Keys.left());
+    TinyAssertions.assertSelection(editor, [ 0 ], 2, [ 0 ], 3);
+    TinyContentActions.keystroke(editor, Keys.left());
+    TinyAssertions.assertCursor(editor, [ 0, 3 ], 1);
+    TinyContentActions.keystroke(editor, Keys.right());
+    TinyAssertions.assertSelection(editor, [ 0 ], 2, [ 0 ], 3);
+    TinyContentActions.keystroke(editor, Keys.right());
+    TinyAssertions.assertCursor(editor, [ 0, 2 ], 0);
+    TinyContentActions.keystroke(editor, Keys.right());
+    TinyAssertions.assertSelection(editor, [ 0 ], 1, [ 0 ], 2);
+    TinyContentActions.keystroke(editor, Keys.right());
+    TinyAssertions.assertCursor(editor, [ 0, 1 ], 0);
   });
 });

@@ -1,12 +1,11 @@
 import { ApproxStructure, Assertions, FocusTools, Keys, StructAssert, UiControls, UiFinder } from '@ephox/agar';
 import { describe, it, before, after } from '@ephox/bedrock-client';
-import { TinyDom, TinyHooks, TinySelections, TinyUiActions } from '@ephox/mcagar';
 import { Attribute, SugarBody, SugarDocument } from '@ephox/sugar';
+import { TinyDom, TinyHooks, TinySelections, TinyUiActions } from '@ephox/wrap-mcagar';
 import { assert } from 'chai';
 
 import Editor from 'tinymce/core/api/Editor';
 import Plugin from 'tinymce/plugins/link/Plugin';
-import Theme from 'tinymce/themes/silver/Theme';
 
 import { TestLinkUi } from '../module/TestLinkUi';
 
@@ -15,7 +14,7 @@ describe('browser.tinymce.plugins.link.DialogFlowTest', () => {
     plugins: 'link',
     toolbar: 'link',
     base_url: '/project/tinymce/js/tinymce'
-  }, [ Plugin, Theme ]);
+  }, [ Plugin ]);
 
   before(() => {
     TestLinkUi.clearHistory();
@@ -26,7 +25,7 @@ describe('browser.tinymce.plugins.link.DialogFlowTest', () => {
   });
 
   const pAssertInputValue = async (editor: Editor, expected: string, group: string) => {
-    const input = await TestLinkUi.pFindInDialog(editor, 'label:contains("' + group + '") + input');
+    const input = await TestLinkUi.pFindInDialog<HTMLInputElement>(editor, 'label:contains("' + group + '") + input');
     const value = UiControls.getValue(input);
     assert.equal(value, expected, 'Checking input value');
   };

@@ -1,17 +1,16 @@
 import { Waiter } from '@ephox/agar';
 import { before, describe, it } from '@ephox/bedrock-client';
-import { TinyDom, TinyHooks } from '@ephox/mcagar';
 import { PlatformDetection } from '@ephox/sand';
 import { Css, Insert, Remove, Scroll, SugarBody, SugarElement, SugarLocation } from '@ephox/sugar';
+import { TinyDom, TinyHooks } from '@ephox/wrap-mcagar';
 
 import Editor from 'tinymce/core/api/Editor';
-import Theme from 'tinymce/themes/silver/Theme';
 
 import { pAssertFloatingToolbarHeight, pOpenFloatingToolbarAndAssertPosition } from '../../../module/ToolbarUtils';
 
 describe('browser.tinymce.themes.silver.editor.toolbar.ToolbarDrawerFloatingPositionTest', () => {
-  const toolbarHeight = 39;
-  const toolbarDrawerHeight = 80;
+  const toolbarHeight = 33;
+  const toolbarDrawerHeight = 86;
   const windowBottomOffset = window.innerHeight - 100;
   let rootElement: SugarElement<HTMLDivElement>;
 
@@ -30,11 +29,11 @@ describe('browser.tinymce.themes.silver.editor.toolbar.ToolbarDrawerFloatingPosi
 
   const hook = TinyHooks.bddSetupFromElement<Editor>({
     menubar: false,
-    width: 400,
+    width: 450,
     base_url: '/project/tinymce/js/tinymce',
-    toolbar: 'undo redo | styleselect | bold italic underline | strikethrough superscript subscript | alignleft aligncenter alignright aligncenter | outdent indent | cut copy paste | selectall remove',
+    toolbar: 'undo redo | styles | bold italic underline | strikethrough superscript subscript | alignleft aligncenter alignright aligncenter | outdent indent | cut copy paste | selectall remove',
     toolbar_mode: 'floating'
-  }, setupElement, [ Theme ]);
+  }, setupElement, []);
 
   before(async () => {
     // Firefox requires a small wait, otherwise the initial toolbar position is incorrect

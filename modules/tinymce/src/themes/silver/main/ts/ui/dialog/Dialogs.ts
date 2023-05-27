@@ -1,13 +1,6 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import {
   AddEventsBehaviour, AlloyComponent, AlloyEvents, AlloyParts, AlloySpec, Behaviour, Button, Container, DomFactory, Focusing, Keying, ModalDialog,
-  NativeEvents, SystemEvents, Tabstopping
+  NativeEvents, SketchSpec, SystemEvents, Tabstopping
 } from '@ephox/alloy';
 import { Optional, Result } from '@ephox/katamari';
 import { Class, SugarBody } from '@ephox/sugar';
@@ -15,6 +8,7 @@ import { Class, SugarBody } from '@ephox/sugar';
 import Env from 'tinymce/core/api/Env';
 
 import { UiFactoryBackstageProviders } from '../../backstage/Backstage';
+import * as HtmlSanitizer from '../core/HtmlSanitizer';
 import * as NavigableObject from '../general/NavigableObject';
 
 const isTouch = Env.deviceType.isTouch();
@@ -42,7 +36,7 @@ const defaultHeader = (title: AlloyParts.ConfiguredPart, close: AlloyParts.Confi
   ]
 });
 
-const pClose = (onClose: () => void, providersBackstage: UiFactoryBackstageProviders) => ModalDialog.parts.close(
+const pClose = (onClose: () => void, providersBackstage: UiFactoryBackstageProviders): AlloyParts.ConfiguredPart => ModalDialog.parts.close(
   // Need to find a way to make it clear in the docs whether parts can be sketches
   Button.sketch({
     dom: {
@@ -60,7 +54,7 @@ const pClose = (onClose: () => void, providersBackstage: UiFactoryBackstageProvi
   })
 );
 
-const pUntitled = () => ModalDialog.parts.title({
+const pUntitled = (): AlloyParts.ConfiguredPart => ModalDialog.parts.title({
   dom: {
     tag: 'div',
     classes: [ 'tox-dialog__title' ],
@@ -71,7 +65,7 @@ const pUntitled = () => ModalDialog.parts.title({
   }
 });
 
-const pBodyMessage = (message: string, providersBackstage: UiFactoryBackstageProviders) => ModalDialog.parts.body({
+const pBodyMessage = (message: string, providersBackstage: UiFactoryBackstageProviders): AlloyParts.ConfiguredPart => ModalDialog.parts.body({
   dom: {
     tag: 'div',
     classes: [ 'tox-dialog__body' ]
@@ -84,14 +78,14 @@ const pBodyMessage = (message: string, providersBackstage: UiFactoryBackstagePro
       },
       components: [
         {
-          dom: DomFactory.fromHtml(`<p>${providersBackstage.translate(message)}</p>`)
+          dom: DomFactory.fromHtml(`<p>${HtmlSanitizer.sanitizeHtmlString(providersBackstage.translate(message))}</p>`)
         }
       ]
     }
   ]
 });
 
-const pFooter = (buttons: AlloySpec[]) => ModalDialog.parts.footer({
+const pFooter = (buttons: AlloySpec[]): AlloyParts.ConfiguredPart => ModalDialog.parts.footer({
   dom: {
     tag: 'div',
     classes: [ 'tox-dialog__footer' ]
@@ -99,7 +93,7 @@ const pFooter = (buttons: AlloySpec[]) => ModalDialog.parts.footer({
   components: buttons
 });
 
-const pFooterGroup = (startButtons: AlloySpec[], endButtons: AlloySpec[]) => [
+const pFooterGroup = (startButtons: AlloySpec[], endButtons: AlloySpec[]): SketchSpec[] => [
   Container.sketch({
     dom: {
       tag: 'div',
@@ -127,9 +121,10 @@ export interface DialogSpec {
   extraStyles: Record<string, string>;
   dialogEvents: AlloyEvents.AlloyEventKeyAndHandler<any>[];
   eventOrder: Record<string, string[]>;
+  firstTabstop?: number;
 }
 
-const renderDialog = (spec: DialogSpec) => {
+const renderDialog = (spec: DialogSpec): SketchSpec => {
   const dialogClass = 'tox-dialog';
   const blockerClass = dialogClass + '-wrap';
   const blockerBackdropClass = blockerClass + '__backdrop';
@@ -144,6 +139,7 @@ const renderDialog = (spec: DialogSpec) => {
         return Optional.some(true);
       },
       useTabstopAt: (elem) => !NavigableObject.isPseudoStop(elem),
+      firstTabstop: spec.firstTabstop,
       dom: {
         tag: 'div',
         classes: [ dialogClass ].concat(spec.extraClasses),

@@ -7,9 +7,9 @@ import { TargetMergable } from 'ephox/snooker/model/RunOperation';
 
 // Mock/Stub out helper functions
 
-const targetStub = (selection: { section: number; row: number; column: number}[], bounds: { startRow: number; startCol: number; finishRow: number; finishCol: number}, table: SugarElement): TargetMergable => {
+const targetStub = (selection: Array<{ section: number; row: number; column: number }>, bounds: { startRow: number; startCol: number; finishRow: number; finishCol: number }, table: SugarElement<HTMLTableElement>): TargetMergable => {
   const cells = Optionals.cat(Arr.map(selection, (path) => {
-    return Hierarchy.follow(table, [ path.section, path.row, path.column ]);
+    return Hierarchy.follow(table, [ path.section, path.row, path.column ]) as Optional<SugarElement<HTMLTableCellElement>>;
   }));
 
   return {
@@ -51,6 +51,7 @@ const generators: Generators = {
     Insert.append(tag, SugarElement.fromText('?'));
     return tag;
   },
+  colGap: () => SugarElement.fromTag('col'),
   col: () => SugarElement.fromTag('col'),
   colgroup: () => SugarElement.fromTag('colgroup')
 };
@@ -71,6 +72,7 @@ const pasteGenerators: SimpleGenerators = {
   row: () => SugarElement.fromTag('tr'),
   cell: createCell,
   replace,
+  colGap: () => SugarElement.fromTag('col'),
   gap: createCell
 };
 

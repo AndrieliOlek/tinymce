@@ -1,57 +1,183 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
+import { AutocompleterEventArgs } from '../autocomplete/AutocompleteTypes';
 import { GetContentArgs, SetContentArgs } from '../content/ContentTypes';
+import { FormatVars } from '../fmt/FormatTypes';
+import { RangeLikeObject } from '../selection/RangeTypes';
 import { UndoLevel } from '../undo/UndoManagerTypes';
+import { SetAttribEvent } from './dom/DOMUtils';
 import Editor from './Editor';
+import { ParserArgs } from './html/DomParser';
+import { NotificationApi, NotificationSpec } from './NotificationManager';
 import { Dialog } from './ui/Ui';
 import { NativeEventMap } from './util/EventDispatcher';
 import { InstanceApi } from './WindowManager';
 
-export interface ExecCommandEvent { command: string; ui?: boolean; value?: any }
+export interface ExecCommandEvent {
+  command: string;
+  ui: boolean;
+  value?: any;
+}
 
-// TODO Figure out if these properties should be on the ContentArgs types
-export type GetContentEvent = GetContentArgs & { source_view?: boolean; selection?: boolean; save?: boolean };
-export type SetContentEvent = SetContentArgs & { paste?: boolean; selection?: boolean };
+export interface BeforeGetContentEvent extends GetContentArgs {
+  selection?: boolean;
+}
 
-export interface NewBlockEvent { newBlock: Element }
+export interface GetContentEvent extends BeforeGetContentEvent {
+  content: string;
+}
 
-export interface NodeChangeEvent { element: Element; parents: Node[]; selectionChange?: boolean; initial?: boolean }
+export interface BeforeSetContentEvent extends SetContentArgs {
+  content: string;
+  selection?: boolean;
+}
 
-export interface ObjectResizeEvent { target: HTMLElement; width: number; height: number; origin: string }
+export interface SetContentEvent extends BeforeSetContentEvent {
+  /** @deprecated */
+  content: string;
+}
 
-export interface ObjectSelectedEvent { target: Node; targetClone?: Node }
+export interface SaveContentEvent extends GetContentEvent {
+  save: boolean;
+}
 
-export interface ScrollIntoViewEvent { elm: HTMLElement; alignToTop: boolean }
+export interface NewBlockEvent {
+  newBlock: Element;
+}
 
-export interface SetSelectionRangeEvent { range: Range; forward: boolean }
+export interface NodeChangeEvent {
+  element: Element;
+  parents: Node[];
+  selectionChange?: boolean;
+  initial?: boolean;
+}
 
-export interface ShowCaretEvent { target: Node; direction: number; before: boolean }
+export interface FormatEvent {
+  format: string;
+  vars?: FormatVars;
+  node?: Node | RangeLikeObject | null;
+}
 
-export interface SwitchModeEvent { mode: string }
+export interface ObjectResizeEvent {
+  target: HTMLElement;
+  width: number;
+  height: number;
+  origin: string;
+}
 
-export interface AddUndoEvent { level: UndoLevel; lastLevel: UndoLevel; originalEvent: Event }
-export interface UndoRedoEvent { level: UndoLevel }
+export interface ObjectSelectedEvent {
+  target: Node;
+  targetClone?: Node;
+}
 
-export interface WindowEvent<T extends Dialog.DialogData> { dialog: InstanceApi<T> }
+export interface ScrollIntoViewEvent {
+  elm: HTMLElement;
+  alignToTop: boolean | undefined;
+}
 
-export interface ProgressStateEvent { state: boolean; time?: number }
+export interface SetSelectionRangeEvent {
+  range: Range;
+  forward: boolean | undefined;
+}
 
-export interface AfterProgressStateEvent { state: boolean }
+export interface ShowCaretEvent {
+  target: Node;
+  direction: number;
+  before: boolean;
+}
 
-export interface PlaceholderToggleEvent { state: boolean }
+export interface SwitchModeEvent {
+  mode: string;
+}
 
-export interface LoadErrorEvent { message: string }
+export interface ChangeEvent {
+  level: UndoLevel;
+  lastLevel: UndoLevel | undefined;
+}
+
+export interface AddUndoEvent extends ChangeEvent {
+  originalEvent: Event | undefined;
+}
+
+export interface UndoRedoEvent {
+  level: UndoLevel;
+}
+
+export interface WindowEvent<T extends Dialog.DialogData> {
+  dialog: InstanceApi<T>;
+}
+
+export interface ProgressStateEvent {
+  state: boolean;
+  time?: number;
+}
+
+export interface AfterProgressStateEvent {
+  state: boolean;
+}
+
+export interface PlaceholderToggleEvent {
+  state: boolean;
+}
+
+export interface LoadErrorEvent {
+  message: string;
+}
+
+export interface PreProcessEvent extends ParserArgs {
+  node: Element;
+}
+
+export interface PostProcessEvent extends ParserArgs {
+  content: string;
+}
+
+export interface PastePlainTextToggleEvent {
+  state: boolean;
+}
+
+export interface PastePreProcessEvent {
+  content: string;
+  readonly internal: boolean;
+}
+
+export interface PastePostProcessEvent {
+  node: HTMLElement;
+  readonly internal: boolean;
+}
+
+export interface EditableRootStateChangeEvent {
+  state: boolean;
+}
+
+export interface NewTableRowEvent {
+  node: HTMLTableRowElement;
+}
+
+export interface NewTableCellEvent {
+  node: HTMLTableCellElement;
+}
+
+export interface TableEventData {
+  readonly structure: boolean;
+  readonly style: boolean;
+}
+
+export interface TableModifiedEvent extends TableEventData {
+  readonly table: HTMLTableElement;
+}
+
+export interface BeforeOpenNotificationEvent {
+  notification: NotificationSpec;
+}
+
+export interface OpenNotificationEvent {
+  notification: NotificationApi;
+}
 
 export interface EditorEventMap extends Omit<NativeEventMap, 'blur' | 'focus'> {
-  'activate': { relatedTarget: Editor };
+  'activate': { relatedTarget: Editor | null };
   'deactivate': { relatedTarget: Editor };
-  'focus': { blurredEditor: Editor };
-  'blur': { focusedEditor: Editor };
+  'focus': { blurredEditor: Editor | null };
+  'blur': { focusedEditor: Editor | null };
   'resize': UIEvent;
   'scroll': UIEvent;
   'detach': { };
@@ -62,16 +188,20 @@ export interface EditorEventMap extends Omit<NativeEventMap, 'blur' | 'focus'> {
   'ObjectResized': ObjectResizeEvent;
   'ObjectResizeStart': ObjectResizeEvent;
   'SwitchMode': SwitchModeEvent;
-  'ScrollWindow': UIEvent;
+  'ScrollWindow': Event;
   'ResizeWindow': UIEvent;
   'SkinLoaded': { };
   'SkinLoadError': LoadErrorEvent;
   'PluginLoadError': LoadErrorEvent;
+  'ModelLoadError': LoadErrorEvent;
   'IconsLoadError': LoadErrorEvent;
+  'ThemeLoadError': LoadErrorEvent;
   'LanguageLoadError': LoadErrorEvent;
   'BeforeExecCommand': ExecCommandEvent;
   'ExecCommand': ExecCommandEvent;
   'NodeChange': NodeChangeEvent;
+  'FormatApply': FormatEvent;
+  'FormatRemove': FormatEvent;
   'ShowCaret': ShowCaretEvent;
   'SelectionChange': { };
   'ObjectSelected': ObjectSelectedEvent;
@@ -79,11 +209,13 @@ export interface EditorEventMap extends Omit<NativeEventMap, 'blur' | 'focus'> {
   'GetSelectionRange': { range: Range };
   'SetSelectionRange': SetSelectionRangeEvent;
   'AfterSetSelectionRange': SetSelectionRangeEvent;
-  'BeforeGetContent': GetContentEvent;
+  'BeforeGetContent': BeforeGetContentEvent;
   'GetContent': GetContentEvent;
-  'BeforeSetContent': SetContentEvent;
+  'BeforeSetContent': BeforeSetContentEvent;
   'SetContent': SetContentEvent;
-  'LoadContent': { };
+  'SaveContent': SaveContentEvent;
+  'RawSaveContent': SaveContentEvent;
+  'LoadContent': { load: boolean; element: HTMLElement };
   'PreviewFormats': { };
   'AfterPreviewFormats': { };
   'ScriptsLoaded': { };
@@ -96,6 +228,7 @@ export interface EditorEventMap extends Omit<NativeEventMap, 'blur' | 'focus'> {
   'Undo': UndoRedoEvent;
   'BeforeAddUndo': AddUndoEvent;
   'AddUndo': AddUndoEvent;
+  'change': ChangeEvent;
   'CloseWindow': WindowEvent<any>;
   'OpenWindow': WindowEvent<any>;
   'ProgressState': ProgressStateEvent;
@@ -104,6 +237,23 @@ export interface EditorEventMap extends Omit<NativeEventMap, 'blur' | 'focus'> {
   'tap': TouchEvent;
   'longpress': TouchEvent;
   'longpresscancel': { };
+  'PreProcess': PreProcessEvent;
+  'PostProcess': PostProcessEvent;
+  'AutocompleterStart': AutocompleterEventArgs;
+  'AutocompleterUpdate': AutocompleterEventArgs;
+  'AutocompleterEnd': { };
+  'PastePlainTextToggle': PastePlainTextToggleEvent;
+  'PastePreProcess': PastePreProcessEvent;
+  'PastePostProcess': PastePostProcessEvent;
+  'TableModified': TableModifiedEvent;
+  'NewRow': NewTableRowEvent;
+  'NewCell': NewTableCellEvent;
+  'SetAttrib': SetAttribEvent;
+  'hide': { };
+  'show': { };
+  'dirty': { };
+  'BeforeOpenNotification': BeforeOpenNotificationEvent;
+  'OpenNotification': OpenNotificationEvent;
 }
 
 export interface EditorManagerEventMap {

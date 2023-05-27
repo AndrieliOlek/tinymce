@@ -1,17 +1,16 @@
 import { Keys } from '@ephox/agar';
 import { describe, it } from '@ephox/bedrock-client';
-import { TinyContentActions, TinyHooks, TinySelections, TinyUiActions } from '@ephox/mcagar';
+import { TinyContentActions, TinyHooks, TinySelections, TinyUiActions } from '@ephox/wrap-mcagar';
 
 import Editor from 'tinymce/core/api/Editor';
 import Plugin from 'tinymce/plugins/save/Plugin';
-import Theme from 'tinymce/themes/silver/Theme';
 
 describe('browser.tinymce.plugins.save.SaveSanityTest', () => {
   const hook = TinyHooks.bddSetupLight<Editor>({
     plugins: 'save',
     toolbar: 'save',
     base_url: '/project/tinymce/js/tinymce',
-  }, [ Theme, Plugin ]);
+  }, [ Plugin ]);
 
   it('TBA: Assert Save button is disabled when editor is opened.', async () => {
     const editor = hook.editor();

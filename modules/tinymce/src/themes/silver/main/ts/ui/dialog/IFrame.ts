@@ -1,14 +1,6 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
-import { AlloyComponent, Behaviour, Focusing, FormField, Tabstopping } from '@ephox/alloy';
+import { AlloyComponent, Behaviour, Focusing, FormField, SketchSpec, Tabstopping } from '@ephox/alloy';
 import { Dialog } from '@ephox/bridge';
 import { Cell, Optional } from '@ephox/katamari';
-import { PlatformDetection } from '@ephox/sand';
 import { Attribute } from '@ephox/sugar';
 
 import { UiFactoryBackstageProviders } from '../../backstage/Backstage';
@@ -16,38 +8,23 @@ import { renderFormFieldWith, renderLabel } from '../alien/FieldLabeller';
 import { RepresentingConfigs } from '../alien/RepresentingConfigs';
 import * as NavigableObject from '../general/NavigableObject';
 
-const platformNeedsSandboxing = !(PlatformDetection.detect().browser.isIE() || PlatformDetection.detect().browser.isEdge());
-
 interface IFrameSourcing {
-  getValue: (frame: AlloyComponent) => string;
-  setValue: (frame: AlloyComponent, value: string) => void;
+  readonly getValue: (frame: AlloyComponent) => string;
+  readonly setValue: (frame: AlloyComponent, value: string) => void;
 }
 
 type IframeSpec = Omit<Dialog.Iframe, 'type'>;
 
-const getDynamicSource = (isSandbox): IFrameSourcing => {
-  const cachedValue = Cell('');
+const getDynamicSource = (initialData: Optional<string>): IFrameSourcing => {
+  const cachedValue = Cell(initialData.getOr(''));
   return {
     getValue: (_frameComponent: AlloyComponent): string =>
-      // Ideally we should fetch data from the iframe...innerHtml, this triggers Corrs errors
+      // Ideally we should fetch data from the iframe...innerHtml, this triggers Cors errors
       cachedValue.get(),
     setValue: (frameComponent: AlloyComponent, html: string) => {
-
-      if (!isSandbox) {
-        Attribute.set(frameComponent.element, 'src', `javascript:''`);
-        // IE 6-11 doesn't support data uris on iframeComponents
-        // and Edge only supports upto ~4000 chars in data uris
-        // so I guess they will have to be less secure since we can't sandbox on those
-        // TODO: Use sandbox if future versions of IE/Edge supports iframeComponents with data: uris.
-        const doc = frameComponent.element.dom.contentWindow.document;
-
-        doc.open();
-        doc.write(html);
-        doc.close();
-
-      } else {
-        // TINY-3769: We need to use srcdoc here, instead of src with a data URI, otherwise browsers won't retain the Origin.
-        // See https://bugs.chromium.org/p/chromium/issues/detail?id=58999#c11
+      // TINY-3769: We need to use srcdoc here, instead of src with a data URI, otherwise browsers won't retain the Origin.
+      // See https://bugs.chromium.org/p/chromium/issues/detail?id=58999#c11
+      if (cachedValue.get() !== html) {
         Attribute.set(frameComponent.element, 'srcdoc', html);
       }
       cachedValue.set(html);
@@ -55,15 +32,18 @@ const getDynamicSource = (isSandbox): IFrameSourcing => {
   };
 };
 
-const renderIFrame = (spec: IframeSpec, providersBackstage: UiFactoryBackstageProviders) => {
-  const isSandbox = platformNeedsSandboxing && spec.sandboxed;
+const renderIFrame = (spec: IframeSpec, providersBackstage: UiFactoryBackstageProviders, initialData: Optional<string>): SketchSpec => {
+  const isSandbox = spec.sandboxed;
+  const isTransparent = spec.transparent;
+  const baseClass = 'tox-dialog__iframe';
 
   const attributes = {
     ...spec.label.map<{ title?: string }>((title) => ({ title })).getOr({}),
-    ...isSandbox ? { sandbox: 'allow-scripts allow-same-origin' } : { }
+    ...initialData.map((html) => ({ srcdoc: html })).getOr({}),
+    ...isSandbox ? { sandbox: 'allow-scripts allow-same-origin' } : { },
   };
 
-  const sourcing = getDynamicSource(isSandbox);
+  const sourcing = getDynamicSource(initialData);
 
   const pLabel = spec.label.map((label) => renderLabel(label, providersBackstage));
 
@@ -73,12 +53,13 @@ const renderIFrame = (spec: IframeSpec, providersBackstage: UiFactoryBackstagePr
       uid: newSpec.uid,
       dom: {
         tag: 'iframe',
-        attributes
+        attributes,
+        classes: (isTransparent ? [ baseClass ] : [ baseClass, `${baseClass}--opaque` ])
       },
       behaviours: Behaviour.derive([
         Tabstopping.config({ }),
         Focusing.config({ }),
-        RepresentingConfigs.withComp(Optional.none(), sourcing.getValue, sourcing.setValue)
+        RepresentingConfigs.withComp(initialData, sourcing.getValue, sourcing.setValue)
       ])
     }
   );

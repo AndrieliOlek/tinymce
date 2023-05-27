@@ -1,10 +1,9 @@
 import { describe, it } from '@ephox/bedrock-client';
-import { LegacyUnit, TinyAssertions, TinyHooks } from '@ephox/mcagar';
+import { LegacyUnit, TinyAssertions, TinyHooks } from '@ephox/wrap-mcagar';
 import { assert } from 'chai';
 
 import Editor from 'tinymce/core/api/Editor';
 import Plugin from 'tinymce/plugins/lists/Plugin';
-import Theme from 'tinymce/themes/silver/Theme';
 
 describe('browser.tinymce.plugins.lists.RemoveForcedRootBlockAttrsTest', () => {
   const hook = TinyHooks.bddSetupLight<Editor>({
@@ -25,7 +24,7 @@ describe('browser.tinymce.plugins.lists.RemoveForcedRootBlockAttrsTest', () => {
     forced_root_block_attrs: {
       'data-editor': '1'
     }
-  }, [ Plugin, Theme ], true);
+  }, [ Plugin ], true);
 
   it('TBA: Remove UL with forced_root_block_attrs', () => {
     const editor = hook.editor();

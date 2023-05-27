@@ -1,21 +1,20 @@
 import { Keys } from '@ephox/agar';
 import { before, context, describe, it } from '@ephox/bedrock-client';
 import { Arr } from '@ephox/katamari';
-import { TinyAssertions, TinyContentActions, TinyHooks, TinySelections } from '@ephox/mcagar';
+import { TinyAssertions, TinyContentActions, TinyHooks, TinySelections } from '@ephox/wrap-mcagar';
 import { assert } from 'chai';
 
 import Editor from 'tinymce/core/api/Editor';
 import Env from 'tinymce/core/api/Env';
 import * as CaretContainer from 'tinymce/core/caret/CaretContainer';
 import * as NodeType from 'tinymce/core/dom/NodeType';
-import Theme from 'tinymce/themes/silver/Theme';
 
 describe('browser.tinymce.core.keyboard.MediaNavigationTest', () => {
   const hook = TinyHooks.bddSetupLight<Editor>({
     height: 400,
     indent: false,
     base_url: '/project/tinymce/js/tinymce'
-  }, [ Theme ], true);
+  }, [], true);
 
   const assertStartContainer = (editor: Editor, f: (node: Node) => boolean) => {
     const startContainer = editor.selection.getRng().startContainer;
@@ -28,11 +27,12 @@ describe('browser.tinymce.core.keyboard.MediaNavigationTest', () => {
   };
 
   Arr.each([
-    { type: 'video', content: '<video controls="controls"><source src="custom/video.mp4" /></video>', skip: false },
-    { type: 'audio', content: '<audio controls="controls"><source src="custom/audio.mp3" /></audio>', skip: false },
+    { type: 'video', content: '<video controls="controls"><source src="custom/video.mp4"></video>', skip: false },
+    { type: 'audio', content: '<audio controls="controls"><source src="custom/audio.mp3"></audio>', skip: false },
     // Firefox won't render without a valid embed/object, so skip
-    { type: 'embed', content: '<embed src="custom/video.mp4" />', skip: Env.browser.isFirefox() },
-    { type: 'object', content: '<object data="custom/file.pdf"></object>', skip: Env.browser.isFirefox() }
+    { type: 'embed', content: '<embed src="custom/video.mp4">', skip: Env.browser.isFirefox() },
+    // TINY-7871: Safari 14.1 also appears to have a bug that causes it to freeze without a valid object
+    { type: 'object', content: '<object data="custom/file.pdf"></object>', skip: Env.browser.isFirefox() || Env.browser.isSafari() }
   ], (test) => {
     const { type, content } = test;
 

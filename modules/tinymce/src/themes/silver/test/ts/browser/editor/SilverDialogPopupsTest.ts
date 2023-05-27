@@ -1,19 +1,19 @@
 import { FocusTools, Keys, UiFinder, Waiter } from '@ephox/agar';
 import { before, describe, it, TestLabel } from '@ephox/bedrock-client';
 import { Result } from '@ephox/katamari';
-import { TinyHooks, TinyUiActions } from '@ephox/mcagar';
 import { PlatformDetection } from '@ephox/sand';
-import { SelectorExists, SugarBody, SugarDocument, SugarElement } from '@ephox/sugar';
+import { SelectorExists, SugarBody, SugarDocument, SugarElement, WindowSelection } from '@ephox/sugar';
+import { TinyHooks, TinyUiActions } from '@ephox/wrap-mcagar';
 
 import Editor from 'tinymce/core/api/Editor';
-import Theme from 'tinymce/themes/silver/Theme';
 
 describe('browser.tinymce.themes.silver.editor.DialogPopupsTest', () => {
   before(function () {
     // NOTE: This test uses the caretRangeFromPoint API which is not supported on every browser. We are
     // using this API to check if the popups appearing from things like the color input button and
-    // the urlinput are on top of the dialog. Just test in Chrome.
-    if (!PlatformDetection.detect().browser.isChrome()) {
+    // the urlinput are on top of the dialog. Just test in Firefox and Chrome.
+    const browser = PlatformDetection.detect().browser;
+    if (!browser.isChromium() && !browser.isFirefox()) {
       this.skip();
     }
   });
@@ -63,7 +63,7 @@ describe('browser.tinymce.themes.silver.editor.DialogPopupsTest', () => {
         })
       });
     }
-  }, [ Theme ], true);
+  }, [], true);
 
   const pWaitForDialogClosed = () => Waiter.pTryUntil(
     'Waiting for dialog to close',
@@ -74,11 +74,9 @@ describe('browser.tinymce.themes.silver.editor.DialogPopupsTest', () => {
     const elem = getFocused(SugarDocument.getDocument()).getOrDie();
     const rect = elem.dom.getBoundingClientRect();
     const middle = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
-    const range = document.caretRangeFromPoint(middle.x, middle.y);
-    if (!range) {
-      throw new Error('Could not find a range at coordinate: (' + middle.x + ', ' + middle.y + ')');
-    } else if (!SelectorExists.closest(SugarElement.fromDom(range.startContainer), selector)) {
-      throw new Error('Range was not within: "' + selector + '". Are you sure that it is on top of the dialog?');
+    const range = WindowSelection.getAtPoint(window, middle.x, middle.y).getOrDie(`Could not find a range at coordinate: (${middle.x}, ${middle.y})`);
+    if (!SelectorExists.closest(range.start, selector)) {
+      throw new Error(`Range was not within: "${selector}". Are you sure that it is on top of the dialog?`);
     } else {
       return rect;
     }
@@ -94,9 +92,9 @@ describe('browser.tinymce.themes.silver.editor.DialogPopupsTest', () => {
     TinyUiActions.keydown(editor, Keys.enter());
     await FocusTools.pTryOnSelector('Focus should be inside colorpicker', doc, '.tox-swatch');
     assertVisibleFocusInside(FocusTools.getFocused, '.tox-swatches');
-    TinyUiActions.keydown(editor, Keys.escape());
+    TinyUiActions.keyup(editor, Keys.escape());
     await FocusTools.pTryOnSelector('Focus should return to colorinput button', doc, 'span[aria-haspopup="true"]');
-    TinyUiActions.keydown(editor, Keys.escape());
+    TinyUiActions.keyup(editor, Keys.escape());
     await pWaitForDialogClosed();
   });
 
@@ -108,8 +106,8 @@ describe('browser.tinymce.themes.silver.editor.DialogPopupsTest', () => {
     TinyUiActions.keydown(editor, Keys.down());
     await UiFinder.pWaitForVisible('Waiting for menu to appear', SugarBody.body(), '.tox-collection__item');
     assertVisibleFocusInside(() => UiFinder.findIn(SugarBody.body(), '.tox-collection__item--active'), '.tox-menu');
-    TinyUiActions.keydown(editor, Keys.escape());
-    TinyUiActions.keydown(editor, Keys.escape());
+    TinyUiActions.keyup(editor, Keys.escape());
+    TinyUiActions.keyup(editor, Keys.escape());
     await pWaitForDialogClosed();
   });
 });

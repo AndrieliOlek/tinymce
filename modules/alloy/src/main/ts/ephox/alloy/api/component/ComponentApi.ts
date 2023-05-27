@@ -11,6 +11,7 @@ type ReadonlyRecord<K extends keyof any, T> = {
 };
 
 export interface AlloyComponent {
+  readonly uid: string;
   readonly getSystem: () => AlloySystemApi;
   readonly config: (behaviour: AlloyBehaviour<any, any>) => Optional<BehaviourConfigAndState<any, any>>;
   readonly hasConfigured: (behaviour: AlloyBehaviour<any, any>) => boolean;
@@ -19,7 +20,7 @@ export interface AlloyComponent {
   readonly connect: (newApi: AlloySystemApi) => void;
   readonly disconnect: () => void;
   readonly getApis: <A>() => A;
-  readonly element: SugarElement;
+  readonly element: SugarElement<any>;
   readonly syncComponents: () => void;
   readonly components: () => AlloyComponent[];
   readonly events: ReadonlyRecord<string, UncurriedHandler>;

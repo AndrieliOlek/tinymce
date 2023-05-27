@@ -1,11 +1,13 @@
 import { Arr } from '@ephox/katamari';
-import { SugarElement } from '@ephox/sugar';
 
 import * as Structs from '../api/Structs';
 import * as GridRow from '../model/GridRow';
+import { CompElm, Subst } from '../util/TableTypes';
 
-type CompElm = (e1: SugarElement, e2: SugarElement) => boolean;
-type Subst = (element: SugarElement, comparator: CompElm) => SugarElement;
+type CloneCell = (elem: Structs.ElementNew<HTMLTableCellElement>, index: number) => Structs.ElementNew<HTMLTableCellElement>;
+
+const cloneRow = (row: Structs.RowCells<HTMLTableRowElement>, cloneCell: CloneCell, comparator: CompElm, substitution: Subst) =>
+  GridRow.clone(row, (elem) => substitution(elem, comparator), cloneCell);
 
 // substitution :: (item, comparator) -> item
 // example is the location of the cursor (the row index)
@@ -15,13 +17,18 @@ const insertRowAt = (grid: Structs.RowCells[], index: number, example: number, c
   const before = rows.slice(0, index);
   const after = rows.slice(index);
 
-  const between = GridRow.mapCells(rows[example], (ex, c) => {
+  const newRow = cloneRow(rows[example], (ex, c) => {
     const withinSpan = index > 0 && index < rows.length && comparator(GridRow.getCellElement(rows[index - 1], c), GridRow.getCellElement(rows[index], c));
     const ret = withinSpan ? GridRow.getCell(rows[index], c) : Structs.elementnew(substitution(ex.element, comparator), true, ex.isLocked);
     return ret;
-  });
+  }, comparator, substitution);
 
-  return cols.concat(before).concat([ between ]).concat(after);
+  return [
+    ...cols,
+    ...before,
+    newRow,
+    ...after
+  ];
 };
 
 const getElementFor = (row: Structs.RowCells, column: number, section: string, withinSpan: boolean, example: number, comparator: CompElm, substitution: Subst): Structs.ElementNew => {
@@ -71,24 +78,33 @@ const splitCellIntoRows = (grid: Structs.RowCells[], exampleRow: number, example
   const before = rows.slice(0, index);
   const after = rows.slice(index);
 
-  const between = GridRow.mapCells(rows[exampleRow], (ex, i) => {
+  const newRow = cloneRow(rows[exampleRow], (ex, i) => {
     const isTargetCell = (i === exampleCol);
     return isTargetCell ? Structs.elementnew(substitution(ex.element, comparator), true, ex.isLocked) : ex;
-  });
+  }, comparator, substitution);
 
-  return cols.concat(before).concat([ between ]).concat(after);
+  return [
+    ...cols,
+    ...before,
+    newRow,
+    ...after
+  ];
 };
 
 const deleteColumnsAt = (grid: Structs.RowCells[], columns: number[]): Structs.RowCells[] =>
   Arr.bind(grid, (row) => {
     const existingCells = row.cells;
     const cells = Arr.foldr(columns, (acc, column) => column >= 0 && column < acc.length ? acc.slice(0, column).concat(acc.slice(column + 1)) : acc, existingCells);
-    return cells.length > 0 ? [ Structs.rowcells(cells, row.section) ] : [];
+    return cells.length > 0 ? [ Structs.rowcells(row.element, cells, row.section, row.isNew) ] : [];
   });
 
 const deleteRowsAt = (grid: Structs.RowCells[], start: number, finish: number): Structs.RowCells[] => {
   const { rows, cols } = GridRow.extractGridDetails(grid);
-  return cols.concat(rows.slice(0, start)).concat(rows.slice(finish + 1));
+  return [
+    ...cols,
+    ...rows.slice(0, start),
+    ...rows.slice(finish + 1)
+  ];
 };
 
 export {

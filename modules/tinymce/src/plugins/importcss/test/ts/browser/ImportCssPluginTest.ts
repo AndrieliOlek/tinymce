@@ -1,19 +1,25 @@
 import { ApproxStructure, Assertions, Mouse, UiFinder } from '@ephox/agar';
 import { before, describe, it } from '@ephox/bedrock-client';
 import { Arr, Optional } from '@ephox/katamari';
-import { McEditor, TinyDom, TinyUiActions } from '@ephox/mcagar';
 import { SugarBody } from '@ephox/sugar';
+import { McEditor, TinyDom, TinyUiActions } from '@ephox/wrap-mcagar';
 
 import Editor from 'tinymce/core/api/Editor';
-import { RawEditorSettings } from 'tinymce/core/api/SettingsTypes';
+import { RawEditorOptions } from 'tinymce/core/api/OptionTypes';
 import Plugin from 'tinymce/plugins/importcss/Plugin';
-import Theme from 'tinymce/themes/silver/Theme';
 
-interface MenuDetails {
-  readonly tag?: string;
+interface MenuTagDetails {
+  readonly tag: string;
   readonly html: string;
-  readonly submenu: boolean;
+  readonly submenu: false;
 }
+
+interface MenuSubmenuDetails {
+  readonly html: string;
+  readonly submenu: true;
+}
+
+type MenuDetails = MenuTagDetails | MenuSubmenuDetails;
 
 interface Assertion {
   readonly choice: Optional<string>;
@@ -24,7 +30,6 @@ interface Assertion {
 describe('browser.tinymce.plugins.importcss.ImportCssTest', () => {
   before(() => {
     Plugin();
-    Theme();
   });
 
   const pAssertMenu = async (label: string, expected: MenuDetails[]) => {
@@ -53,10 +58,10 @@ describe('browser.tinymce.plugins.importcss.ImportCssTest', () => {
     })), menu);
   };
 
-  const pTestEditorWithSettings = async (assertion: Assertion, pluginSettings: RawEditorSettings) => {
+  const pTestEditorWithSettings = async (assertion: Assertion, pluginSettings: RawEditorOptions) => {
     const editor = await McEditor.pFromSettings<Editor>({
       plugins: 'importcss',
-      toolbar: 'styleselect',
+      toolbar: 'styles',
       content_css: pluginSettings.content_css,
       importcss_append: pluginSettings.importcss_append,
       importcss_selector_filter: pluginSettings.importcss_selector_filter,
@@ -213,7 +218,7 @@ describe('browser.tinymce.plugins.importcss.ImportCssTest', () => {
     {
       content_css: [ '/project/tinymce/src/plugins/importcss/test/css/basic.css' ],
       importcss_append: false,
-      importcss_selector_filter: (sel) => sel.indexOf('p') > -1 || sel.indexOf('inline') > -1
+      importcss_selector_filter: (sel: string) => sel.indexOf('p') > -1 || sel.indexOf('inline') > -1
     }
   ));
 
@@ -269,7 +274,7 @@ describe('browser.tinymce.plugins.importcss.ImportCssTest', () => {
         '/project/tinymce/src/plugins/importcss/test/css/other-adv.css'
       ],
       importcss_append: false,
-      importcss_file_filter: (href) => href.indexOf('adv') > -1
+      importcss_file_filter: (href: string) => href.indexOf('adv') > -1
     }
   ));
 
@@ -314,6 +319,24 @@ describe('browser.tinymce.plugins.importcss.ImportCssTest', () => {
         { title: 'Advanced', filter: /.adv/ },
         { title: 'Other', custom: 'B' }
       ]
+    }
+  ));
+
+  it('TINY-8238: content_css with two files, basic and internal CSS classes', () => pTestEditorWithSettings(
+    {
+      menuContents: [
+        { tag: 'h1', html: 'h1.red', submenu: false },
+        { tag: 'p', html: 'p.other', submenu: false },
+        { tag: 'span', html: 'span.inline', submenu: false }
+      ],
+      choice: Optional.some('h1.red')
+    },
+    {
+      content_css: [
+        '/project/tinymce/src/plugins/importcss/test/css/basic.css',
+        '/project/tinymce/src/plugins/importcss/test/css/internal.css'
+      ],
+      importcss_append: undefined
     }
   ));
 });

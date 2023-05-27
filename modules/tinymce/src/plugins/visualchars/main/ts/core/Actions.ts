@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Cell } from '@ephox/katamari';
 
 import Editor from 'tinymce/core/api/Editor';
@@ -12,7 +5,7 @@ import Editor from 'tinymce/core/api/Editor';
 import * as Events from '../api/Events';
 import * as VisualChars from './VisualChars';
 
-const applyVisualChars = (editor: Editor, toggleState: Cell<boolean>) => {
+const applyVisualChars = (editor: Editor, toggleState: Cell<boolean>): void => {
   Events.fireVisualChars(editor, toggleState.get());
 
   const body = editor.getBody();
@@ -24,7 +17,7 @@ const applyVisualChars = (editor: Editor, toggleState: Cell<boolean>) => {
 };
 
 // Toggle state and save selection bookmark before applying visualChars
-const toggleVisualChars = (editor: Editor, toggleState: Cell<boolean>) => {
+const toggleVisualChars = (editor: Editor, toggleState: Cell<boolean>): void => {
   toggleState.set(!toggleState.get());
 
   const bookmark = editor.selection.getBookmark();

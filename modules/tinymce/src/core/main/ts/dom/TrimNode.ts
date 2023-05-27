@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Type } from '@ephox/katamari';
 import { SugarElement } from '@ephox/sugar';
 
@@ -20,7 +13,7 @@ const isSpan = (node: Node): node is HTMLSpanElement =>
 const isInlineContent = (node: Node | null, root: Node): boolean =>
   Type.isNonNullable(node) && (isContent(node, root) || ElementType.isInline(SugarElement.fromDom(node)));
 
-const surroundedByInlineContent = (node: Node, root: Node) => {
+const surroundedByInlineContent = (node: Node, root: Node): boolean => {
   const prev = new DomTreeWalker(node, root).prev(false);
   const next = new DomTreeWalker(node, root).next(false);
   // Check if the next/previous is either inline content or the start/end (eg is undefined)
@@ -29,19 +22,20 @@ const surroundedByInlineContent = (node: Node, root: Node) => {
   return prevIsInline && nextIsInline;
 };
 
-const isBookmarkNode = (node: Node) =>
+const isBookmarkNode = (node: Node): boolean =>
   isSpan(node) && node.getAttribute('data-mce-type') === 'bookmark';
 
 // Keep text nodes with only spaces if surrounded by spans.
 // eg. "<p><span>a</span> <span>b</span></p>" should keep space between a and b
-const isKeepTextNode = (node: Node, root: Node) =>
+const isKeepTextNode = (node: Node, root: Node): boolean =>
   NodeType.isText(node) && node.data.length > 0 && surroundedByInlineContent(node, root);
 
 // Keep elements as long as they have any children
-const isKeepElement = (node: Node) =>
+const isKeepElement = (node: Node): boolean =>
   NodeType.isElement(node) ? node.childNodes.length > 0 : false;
 
-const isDocument = (node: Node) => NodeType.isDocumentFragment(node) || NodeType.isDocument(node);
+const isDocument = (node: Node): boolean =>
+  NodeType.isDocumentFragment(node) || NodeType.isDocument(node);
 
 // W3C valid browsers tend to leave empty nodes to the left/right side of the contents - this makes sense
 // but we don't want that in our code since it serves no purpose for the end user
@@ -66,7 +60,7 @@ const trimNode = <T extends Node>(dom: DOMUtils, node: T, root?: Node): T => {
   if (NodeType.isElement(node)) {
     const currentChildren = node.childNodes;
     if (currentChildren.length === 1 && isBookmarkNode(currentChildren[0])) {
-      node.parentNode.insertBefore(currentChildren[0], node);
+      node.parentNode?.insertBefore(currentChildren[0], node);
     }
   }
 

@@ -1,16 +1,15 @@
-import { UiFinder } from '@ephox/agar';
-import { TestHelpers } from '@ephox/alloy';
-import { TinyUiActions } from '@ephox/mcagar';
+import { TestStore, UiFinder } from '@ephox/agar';
 import { SugarBody } from '@ephox/sugar';
+import { TinyUiActions } from '@ephox/wrap-mcagar';
 
 import Editor from 'tinymce/core/api/Editor';
 import { Dialog } from 'tinymce/core/api/ui/Ui';
 import { WindowParams } from 'tinymce/core/api/WindowManager';
 
-const open = <T>(editor: Editor, spec: Dialog.DialogSpec<T>, params: WindowParams): Dialog.DialogInstanceApi<T> =>
+const open = <T extends Dialog.DialogData>(editor: Editor, spec: Dialog.DialogSpec<T>, params: WindowParams): Dialog.DialogInstanceApi<T> =>
   editor.windowManager.open(spec, params);
 
-const openWithStore = <T>(editor: Editor, spec: Dialog.DialogSpec<T>, params: WindowParams, store: TestHelpers.TestStore) => {
+const openWithStore = <T extends Dialog.DialogData>(editor: Editor, spec: Dialog.DialogSpec<T>, params: WindowParams, store: TestStore): Dialog.DialogInstanceApi<T> => {
   const dialogSpec = {
     onSubmit: store.adder('onSubmit'),
     onClose: store.adder('onClose'),
@@ -22,7 +21,7 @@ const openWithStore = <T>(editor: Editor, spec: Dialog.DialogSpec<T>, params: Wi
   return open(editor, dialogSpec, params);
 };
 
-const close = (editor: Editor) => {
+const close = (editor: Editor): void => {
   TinyUiActions.closeDialog(editor);
   UiFinder.notExists(SugarBody.body(), 'div[role=dialog]');
 };

@@ -1,12 +1,5 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
-import { Arr } from '@ephox/katamari';
-import { Compare, SugarElement } from '@ephox/sugar';
+import { Arr, Optionals } from '@ephox/katamari';
+import { Compare, PredicateFind, Remove, SugarElement, SugarNode } from '@ephox/sugar';
 
 import DOMUtils from 'tinymce/core/api/dom/DOMUtils';
 import RangeUtils from 'tinymce/core/api/dom/RangeUtils';
@@ -21,9 +14,10 @@ import * as NodeType from './NodeType';
 import * as NormalizeLists from './NormalizeLists';
 import * as ListRangeUtils from './RangeUtils';
 import * as Selection from './Selection';
+import { isWithinNonEditableList } from './Util';
 
-const findNextCaretContainer = (editor: Editor, rng: Range, isForward: Boolean, root: Node): Node => {
-  let node = rng.startContainer;
+const findNextCaretContainer = (editor: Editor, rng: Range, isForward: boolean, root: Node): Node | null => {
+  let node: Node | null | undefined = rng.startContainer;
   const offset = rng.startOffset;
 
   if (NodeType.isTextNode(node) && (isForward ? offset < node.data.length : offset > 0)) {
@@ -31,7 +25,7 @@ const findNextCaretContainer = (editor: Editor, rng: Range, isForward: Boolean, 
   }
 
   const nonEmptyBlocks = editor.schema.getNonEmptyElements();
-  if (node.nodeType === 1) {
+  if (NodeType.isElement(node)) {
     node = RangeUtils.getNode(node, offset);
   }
 
@@ -44,7 +38,8 @@ const findNextCaretContainer = (editor: Editor, rng: Range, isForward: Boolean, 
     }
   }
 
-  while ((node = walker[isForward ? 'next' : 'prev2']())) {
+  const walkFn = isForward ? walker.next.bind(walker) : walker.prev2.bind(walker);
+  while ((node = walkFn())) {
     if (node.nodeName === 'LI' && !node.hasChildNodes()) {
       return node;
     }
@@ -57,6 +52,8 @@ const findNextCaretContainer = (editor: Editor, rng: Range, isForward: Boolean, 
       return node;
     }
   }
+
+  return null;
 };
 
 const hasOnlyOneBlockChild = (dom: DOMUtils, elm: Element): boolean => {
@@ -64,16 +61,16 @@ const hasOnlyOneBlockChild = (dom: DOMUtils, elm: Element): boolean => {
   return childNodes.length === 1 && !NodeType.isListNode(childNodes[0]) && dom.isBlock(childNodes[0]);
 };
 
-const unwrapSingleBlockChild = (dom: DOMUtils, elm: Element) => {
+const unwrapSingleBlockChild = (dom: DOMUtils, elm: Element): void => {
   if (hasOnlyOneBlockChild(dom, elm)) {
-    dom.remove(elm.firstChild, true);
+    dom.remove(elm.firstChild as HTMLElement, true);
   }
 };
 
-const moveChildren = (dom: DOMUtils, fromElm: Element, toElm: Element) => {
+const moveChildren = (dom: DOMUtils, fromElm: Element, toElm: Element): void => {
   let node;
 
-  const targetElm = hasOnlyOneBlockChild(dom, toElm) ? toElm.firstChild : toElm;
+  const targetElm = hasOnlyOneBlockChild(dom, toElm) ? toElm.firstChild as HTMLElement : toElm;
   unwrapSingleBlockChild(dom, fromElm);
 
   if (!NodeType.isEmpty(dom, fromElm, true)) {
@@ -83,9 +80,9 @@ const moveChildren = (dom: DOMUtils, fromElm: Element, toElm: Element) => {
   }
 };
 
-const mergeLiElements = (dom: DOMUtils, fromElm: Element, toElm: Element) => {
-  let listNode;
-  const ul: Node = fromElm.parentNode;
+const mergeLiElements = (dom: DOMUtils, fromElm: Element, toElm: Element): void => {
+  let listNode: HTMLElement | undefined;
+  const ul = fromElm.parentNode as Node;
 
   if (!NodeType.isChildOfBody(dom, fromElm) || !NodeType.isChildOfBody(dom, toElm)) {
     return;
@@ -107,7 +104,7 @@ const mergeLiElements = (dom: DOMUtils, fromElm: Element, toElm: Element) => {
   }
 
   if (NodeType.isEmpty(dom, toElm, true)) {
-    dom.$(toElm).empty();
+    Remove.empty(SugarElement.fromDom(toElm));
   }
 
   moveChildren(dom, fromElm, toElm);
@@ -129,13 +126,13 @@ const mergeLiElements = (dom: DOMUtils, fromElm: Element, toElm: Element) => {
   });
 };
 
-const mergeIntoEmptyLi = (editor: Editor, fromLi: HTMLLIElement, toLi: HTMLLIElement) => {
-  editor.dom.$(toLi).empty();
+const mergeIntoEmptyLi = (editor: Editor, fromLi: HTMLLIElement, toLi: HTMLLIElement): void => {
+  Remove.empty(SugarElement.fromDom(toLi));
   mergeLiElements(editor.dom, fromLi, toLi);
   editor.selection.setCursorLocation(toLi, 0);
 };
 
-const mergeForward = (editor: Editor, rng: Range, fromLi: HTMLLIElement, toLi: HTMLLIElement) => {
+const mergeForward = (editor: Editor, rng: Range, fromLi: HTMLLIElement, toLi: HTMLLIElement): void => {
   const dom = editor.dom;
 
   if (dom.isEmpty(toLi)) {
@@ -147,21 +144,21 @@ const mergeForward = (editor: Editor, rng: Range, fromLi: HTMLLIElement, toLi: H
   }
 };
 
-const mergeBackward = (editor: Editor, rng: Range, fromLi: HTMLLIElement, toLi: HTMLLIElement) => {
+const mergeBackward = (editor: Editor, rng: Range, fromLi: HTMLLIElement, toLi: HTMLLIElement): void => {
   const bookmark = Bookmark.createBookmark(rng);
   mergeLiElements(editor.dom, fromLi, toLi);
   const resolvedBookmark = Bookmark.resolveBookmark(bookmark);
   editor.selection.setRng(resolvedBookmark);
 };
 
-const backspaceDeleteFromListToListCaret = (editor: Editor, isForward: boolean) => {
+const backspaceDeleteFromListToListCaret = (editor: Editor, isForward: boolean): boolean => {
   const dom = editor.dom, selection = editor.selection;
   const selectionStartElm = selection.getStart();
-  const root = Selection.getClosestListRootElm(editor, selectionStartElm);
+  const root = Selection.getClosestEditingHost(editor, selectionStartElm);
   const li = dom.getParent(selection.getStart(), 'LI', root) as HTMLLIElement;
 
   if (li) {
-    const ul = li.parentNode;
+    const ul = li.parentElement;
     if (ul === editor.getBody() && NodeType.isEmpty(dom, ul)) {
       return true;
     }
@@ -197,7 +194,7 @@ const backspaceDeleteFromListToListCaret = (editor: Editor, isForward: boolean) 
   return false;
 };
 
-const removeBlock = (dom: DOMUtils, block: Element, root: Node) => {
+const removeBlock = (dom: DOMUtils, block: Element, root: Node): void => {
   const parentBlock = dom.getParent(block.parentNode, dom.isBlock, root);
 
   dom.remove(block);
@@ -206,10 +203,10 @@ const removeBlock = (dom: DOMUtils, block: Element, root: Node) => {
   }
 };
 
-const backspaceDeleteIntoListCaret = (editor: Editor, isForward: boolean) => {
+const backspaceDeleteIntoListCaret = (editor: Editor, isForward: boolean): boolean => {
   const dom = editor.dom;
   const selectionStartElm = editor.selection.getStart();
-  const root = Selection.getClosestListRootElm(editor, selectionStartElm);
+  const root = Selection.getClosestEditingHost(editor, selectionStartElm);
   const block = dom.getParent(selectionStartElm, dom.isBlock, root);
 
   if (block && dom.isEmpty(block)) {
@@ -217,9 +214,18 @@ const backspaceDeleteIntoListCaret = (editor: Editor, isForward: boolean) => {
     const otherLi = dom.getParent(findNextCaretContainer(editor, rng, isForward, root), 'LI', root);
 
     if (otherLi) {
+      const findValidElement = (element: SugarElement<Node>) => Arr.contains([ 'td', 'th', 'caption' ], SugarNode.name(element));
+      const findRoot = (node: SugarElement<Node>) => node.dom === root;
+      const otherLiCell = PredicateFind.closest(SugarElement.fromDom(otherLi), findValidElement, findRoot);
+      const caretCell = PredicateFind.closest(SugarElement.fromDom(rng.startContainer), findValidElement, findRoot);
+
+      if (!Optionals.equals(otherLiCell, caretCell, Compare.eq)) {
+        return false;
+      }
+
       editor.undoManager.transact(() => {
         removeBlock(dom, block, root);
-        ToggleList.mergeWithAdjacentLists(dom, otherLi.parentNode as Element);
+        ToggleList.mergeWithAdjacentLists(dom, otherLi.parentNode as HTMLElement);
         editor.selection.select(otherLi, true);
         editor.selection.collapse(isForward);
       });
@@ -235,12 +241,16 @@ const backspaceDeleteCaret = (editor: Editor, isForward: boolean): boolean => {
   return backspaceDeleteFromListToListCaret(editor, isForward) || backspaceDeleteIntoListCaret(editor, isForward);
 };
 
-const backspaceDeleteRange = (editor: Editor): boolean => {
+const hasListSelection = (editor: Editor) => {
   const selectionStartElm = editor.selection.getStart();
-  const root = Selection.getClosestListRootElm(editor, selectionStartElm);
+  const root = Selection.getClosestEditingHost(editor, selectionStartElm);
   const startListParent = editor.dom.getParent(selectionStartElm, 'LI,DT,DD', root);
 
-  if (startListParent || Selection.getSelectedListItems(editor).length > 0) {
+  return startListParent || Selection.getSelectedListItems(editor).length > 0;
+};
+
+const backspaceDeleteRange = (editor: Editor): boolean => {
+  if (hasListSelection(editor)) {
     editor.undoManager.transact(() => {
       editor.execCommand('Delete');
       NormalizeLists.normalizeLists(editor.dom, editor.getBody());
@@ -253,10 +263,20 @@ const backspaceDeleteRange = (editor: Editor): boolean => {
 };
 
 const backspaceDelete = (editor: Editor, isForward: boolean): boolean => {
-  return editor.selection.isCollapsed() ? backspaceDeleteCaret(editor, isForward) : backspaceDeleteRange(editor);
+  const selection = editor.selection;
+  return !isWithinNonEditableList(editor, selection.getNode()) && (selection.isCollapsed() ?
+    backspaceDeleteCaret(editor, isForward) : backspaceDeleteRange(editor)
+  );
 };
 
-const setup = (editor: Editor) => {
+const setup = (editor: Editor): void => {
+  editor.on('ExecCommand', (e) => {
+    const cmd = e.command.toLowerCase();
+    if ((cmd === 'delete' || cmd === 'forwarddelete') && hasListSelection(editor)) {
+      NormalizeLists.normalizeLists(editor.dom, editor.getBody());
+    }
+  });
+
   editor.on('keydown', (e) => {
     if (e.keyCode === VK.BACKSPACE) {
       if (backspaceDelete(editor, false)) {

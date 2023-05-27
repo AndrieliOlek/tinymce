@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Arr, Optional } from '@ephox/katamari';
 import { Attribute, Replication, SugarElement, SugarNode, Traverse } from '@ephox/sugar';
 
@@ -28,18 +21,18 @@ General workflow: Parse lists to entries -> Manipulate entries -> Compose entrie
 export interface Entry {
   depth: number;
   dirty: boolean;
-  content: SugarElement[];
+  content: SugarElement<Node>[];
   isSelected: boolean;
   listType: ListType;
   listAttributes: Record<string, any>;
   itemAttributes: Record<string, any>;
 }
 
-const isIndented = (entry: Entry) => entry.depth > 0;
+const isIndented = (entry: Entry): boolean => entry.depth > 0;
 
-const isSelected = (entry: Entry) => entry.isSelected;
+const isSelected = (entry: Entry): boolean => entry.isSelected;
 
-const cloneItemContent = (li: SugarElement): SugarElement[] => {
+const cloneItemContent = (li: SugarElement<HTMLElement>): SugarElement<Node>[] => {
   const children = Traverse.children(li);
   const content = hasLastChildList(li) ? children.slice(0, -1) : children;
   return Arr.map(content, Replication.deep);

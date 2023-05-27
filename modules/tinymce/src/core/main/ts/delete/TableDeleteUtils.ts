@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Optional, Optionals } from '@ephox/katamari';
 import { Compare, SelectorFilter, SugarElement } from '@ephox/sugar';
 
@@ -24,7 +17,7 @@ export interface TableSelectionDetails {
 const isRootFromElement = (root: SugarElement<Node>): IsRootFn =>
   (cur: SugarElement<Node>): boolean => Compare.eq(root, cur);
 
-const getTableCells = (table: SugarElement<HTMLTableElement>) =>
+const getTableCells = (table: SugarElement<HTMLTableElement>): SugarElement<HTMLTableCellElement>[] =>
   SelectorFilter.descendants<HTMLTableCellElement>(table, 'td,th');
 
 const getTableDetailsFromRange = (rng: Range, isRoot: IsRootFn): TableSelectionDetails => {

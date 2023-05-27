@@ -1,13 +1,6 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Behaviour, Form as AlloyForm, Keying, Memento, SimpleSpec } from '@ephox/alloy';
 import { Dialog } from '@ephox/bridge';
-import { Arr, Fun } from '@ephox/katamari';
+import { Arr, Fun, Optional } from '@ephox/katamari';
 
 import { UiFactoryBackstage } from '../../backstage/Backstage';
 import { ComposingConfigs } from '../alien/ComposingConfigs';
@@ -18,7 +11,7 @@ import { interpretInForm } from '../general/UiFactory';
 
 export type BodyPanelSpec = Omit<Dialog.Panel, 'type'>;
 
-const renderBodyPanel = (spec: BodyPanelSpec, backstage: UiFactoryBackstage): SimpleSpec => {
+const renderBodyPanel = (spec: BodyPanelSpec, dialogData: Dialog.DialogData, backstage: UiFactoryBackstage): SimpleSpec => {
   const memForm = Memento.record(
     AlloyForm.sketch((parts) => ({
       dom: {
@@ -27,7 +20,7 @@ const renderBodyPanel = (spec: BodyPanelSpec, backstage: UiFactoryBackstage): Si
       },
       // All of the items passed through the form need to be put through the interpreter
       // with their form part preserved.
-      components: Arr.map(spec.items, (item) => interpretInForm(parts, item, backstage))
+      components: Arr.map(spec.items, (item) => interpretInForm(parts, item, dialogData, backstage))
     }))
   );
 
@@ -54,7 +47,7 @@ const renderBodyPanel = (spec: BodyPanelSpec, backstage: UiFactoryBackstage): Si
       }),
       ComposingConfigs.memento(memForm),
       RepresentingConfigs.memento(memForm, {
-        postprocess: (formValue) => FormValues.toValidValues(formValue).fold(
+        postprocess: (formValue: Record<string, Optional<unknown>>) => FormValues.toValidValues(formValue).fold(
           (err) => {
             // eslint-disable-next-line no-console
             console.error(err);

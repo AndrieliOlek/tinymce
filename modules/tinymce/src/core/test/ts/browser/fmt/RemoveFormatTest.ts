@@ -1,24 +1,23 @@
 import { context, describe, it } from '@ephox/bedrock-client';
-import { TinyAssertions, TinyHooks, TinySelections } from '@ephox/mcagar';
+import { TinyAssertions, TinyHooks, TinySelections, TinyState } from '@ephox/wrap-mcagar';
 
 import Editor from 'tinymce/core/api/Editor';
 import { Format } from 'tinymce/core/fmt/FormatTypes';
 import * as RemoveFormat from 'tinymce/core/fmt/RemoveFormat';
-import Theme from 'tinymce/themes/silver/Theme';
 
 describe('browser.tinymce.core.fmt.RemoveFormatTest', () => {
   const hook = TinyHooks.bddSetupLight<Editor>({
     indent: false,
     base_url: '/project/tinymce/js/tinymce'
-  }, [ Theme ], true);
+  }, [], true);
 
-  const removeFormat = [{
+  const removeFormat: Format[] = [{
     selector: 'strong, em',
     remove: 'all',
     split: true,
     expand: false
   }];
-  const boldFormat = [{
+  const boldFormat: Format[] = [{
     inline: 'strong',
     remove: 'all',
     preserve_attributes: [ 'style', 'class' ]
@@ -140,7 +139,9 @@ describe('browser.tinymce.core.fmt.RemoveFormatTest', () => {
       TinyAssertions.assertContent(editor, '<p><em>ab&nbsp; &nbsp;<strong>cd</strong></em></p>');
       TinyAssertions.assertSelection(editor, [ 0, 0, 0 ], 2, [ 0, 0, 0 ], 2);
     });
+  });
 
+  context('Remove single format with range selection', () => {
     it('TINY-6567: Remove format including the final item in the list', () => {
       const editor = hook.editor();
       editor.setContent(
@@ -179,7 +180,7 @@ describe('browser.tinymce.core.fmt.RemoveFormatTest', () => {
           '<li style="text-align: center;">2' +
             '<ul>' +
               '<li style="text-align: center;">a</li>' +
-              '<li style="text-align: center;">b' +
+              '<li style="text-align: center;"><strong>b</strong>' +
                 '<ul>' +
                   '<li style="text-align: center;">1</li>' +
                   '<li style="text-align: center;">2</li>' +
@@ -198,7 +199,7 @@ describe('browser.tinymce.core.fmt.RemoveFormatTest', () => {
           '<li>2' +
             '<ul>' +
               '<li>a</li>' +
-              '<li>b' +
+              '<li><strong>b</strong>' +
                 '<ul>' +
                   '<li>1</li>' +
                   '<li>2</li>' +
@@ -236,6 +237,38 @@ describe('browser.tinymce.core.fmt.RemoveFormatTest', () => {
           '</div>' +
         '</div>'
       );
+    });
+
+    it('TINY-8308: Change format on selected img element and not surrounding elements', () => {
+      const editor = hook.editor();
+      editor.setContent('<p style="text-align: right;">Test text<img src="link" width="40" height="40"></p>');
+      TinySelections.setSelection(editor, [ 0 ], 1, [ 0 ], 2);
+
+      RemoveFormat.remove(editor, 'alignright');
+
+      TinyAssertions.assertContent(editor, '<p style="text-align: right;">Test text<img src="link" width="40" height="40"></p>');
+      TinyAssertions.assertSelection(editor, [ 0 ], 1, [ 0 ], 2);
+    });
+
+    it('TINY-8308: Change format on selected img element when the same format is present on both', () => {
+      const editor = hook.editor();
+      editor.setContent('<p style="text-align: right;">Test text<img src="link" width="40" height="40" style="float: right"></p>');
+      TinySelections.setSelection(editor, [ 0 ], 1, [ 0 ], 2);
+
+      RemoveFormat.remove(editor, 'alignright');
+
+      TinyAssertions.assertContent(editor, '<p style="text-align: right;">Test text<img src="link" width="40" height="40"></p>');
+      TinyAssertions.assertSelection(editor, [ 0 ], 1, [ 0 ], 2);
+    });
+  });
+
+  it('TINY-9678: Should be a noop if selection is not in an editable context', () => {
+    TinyState.withNoneditableRootEditor(hook.editor(), (editor) => {
+      const initialContent = '<p><strong>test</strong></p><p contenteditable="true"><strong>editable</strong></p>';
+      editor.setContent(initialContent);
+      TinySelections.setSelection(editor, [ 0, 0, 0 ], 0, [ 0, 0, 0 ], 4);
+      editor.formatter.remove('bold');
+      TinyAssertions.assertContent(editor, initialContent);
     });
   });
 });

@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import DOMUtils from '../api/dom/DOMUtils';
 
 /**
@@ -14,21 +7,21 @@ import DOMUtils from '../api/dom/DOMUtils';
  * @class tinymce.dom.NodePath
  */
 
-const create = (rootNode, targetNode, normalized?) => {
-  const path = [];
+const create = (rootNode: Node, targetNode: Node, normalized?: boolean): number[] => {
+  const path: number[] = [];
 
-  for (; targetNode && targetNode !== rootNode; targetNode = targetNode.parentNode) {
-    path.push(DOMUtils.nodeIndex(targetNode, normalized));
+  for (let node: Node | null = targetNode; node && node !== rootNode; node = node.parentNode) {
+    path.push(DOMUtils.nodeIndex(node, normalized));
   }
 
   return path;
 };
 
-const resolve = (rootNode, path) => {
-  let i, node, children;
+const resolve = (rootNode: Node, path: number[]): Node | null => {
+  let node: Node, i: number;
 
   for (node = rootNode, i = path.length - 1; i >= 0; i--) {
-    children = node.childNodes;
+    const children = node.childNodes;
 
     if (path[i] > children.length - 1) {
       return null;

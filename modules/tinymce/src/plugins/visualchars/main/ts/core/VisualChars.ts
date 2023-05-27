@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Arr } from '@ephox/katamari';
 import { Class, SugarElement, SugarNode } from '@ephox/sugar';
 
@@ -13,22 +6,21 @@ import Editor from 'tinymce/core/api/Editor';
 import * as Data from './Data';
 import * as Nodes from './Nodes';
 
-const isWrappedNbsp = (node) => node.nodeName.toLowerCase() === 'span' && node.classList.contains('mce-nbsp-wrap');
-
-const show = (editor: Editor, rootElm: Node) => {
-  const nodeList = Nodes.filterDescendants(SugarElement.fromDom(rootElm), Nodes.isMatch);
+const show = (editor: Editor, rootElm: Element): void => {
+  const dom = editor.dom;
+  const nodeList = Nodes.filterEditableDescendants(SugarElement.fromDom(rootElm), Nodes.isMatch, editor.dom.isEditable(rootElm));
 
   Arr.each(nodeList, (n) => {
-    const parent = n.dom.parentNode;
-    if (isWrappedNbsp(parent)) {
+    const parent = n.dom.parentNode as Node;
+    if (Nodes.isWrappedNbsp(parent)) {
       Class.add(SugarElement.fromDom(parent), Data.nbspClass);
     } else {
-      const withSpans = Nodes.replaceWithSpans(editor.dom.encode(SugarNode.value(n)));
+      const withSpans = Nodes.replaceWithSpans(dom.encode(SugarNode.value(n) ?? ''));
 
-      const div = editor.dom.create('div', null, withSpans);
-      let node: any;
+      const div = dom.create('div', {}, withSpans);
+      let node: Node | null;
       while ((node = div.lastChild)) {
-        editor.dom.insertAfter(node, n.dom);
+        dom.insertAfter(node, n.dom);
       }
 
       editor.dom.remove(n.dom);
@@ -36,11 +28,11 @@ const show = (editor: Editor, rootElm: Node) => {
   });
 };
 
-const hide = (editor: Editor, rootElm: Node) => {
+const hide = (editor: Editor, rootElm: Element): void => {
   const nodeList = editor.dom.select(Data.selector, rootElm);
 
   Arr.each(nodeList, (node) => {
-    if (isWrappedNbsp(node)) {
+    if (Nodes.isWrappedNbsp(node)) {
       Class.remove(SugarElement.fromDom(node), Data.nbspClass);
     } else {
       editor.dom.remove(node, true);
@@ -48,7 +40,7 @@ const hide = (editor: Editor, rootElm: Node) => {
   });
 };
 
-const toggle = (editor: Editor) => {
+const toggle = (editor: Editor): void => {
   const body = editor.getBody();
   const bookmark = editor.selection.getBookmark();
   let parentNode = Nodes.findParentElm(editor.selection.getNode(), body);

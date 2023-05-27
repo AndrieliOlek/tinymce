@@ -1,17 +1,16 @@
 import { UiFinder } from '@ephox/agar';
 import { context, describe, it } from '@ephox/bedrock-client';
 import { Fun } from '@ephox/katamari';
-import { TinyAssertions, TinyHooks, TinySelections } from '@ephox/mcagar';
 import { SugarBody } from '@ephox/sugar';
+import { TinyAssertions, TinyHooks, TinySelections } from '@ephox/wrap-mcagar';
 import { assert } from 'chai';
 
 import Editor from 'tinymce/core/api/Editor';
-import Theme from 'tinymce/themes/silver/Theme';
 
 describe('browser.tinymce.themes.silver.throbber.ThrobberEditorTest', () => {
   const hook = TinyHooks.bddSetupLight<Editor>({
     base_url: '/project/tinymce/js/tinymce',
-  }, [ Theme ]);
+  }, []);
 
   const pToggleThrobber = async (editor: Editor, action: () => void = Fun.noop) => {
     editor.setProgressState(true);
@@ -73,7 +72,7 @@ describe('browser.tinymce.themes.silver.throbber.ThrobberEditorTest', () => {
 
     it('TINY-7373: should set correct tabindex on iframe when the throbber is disabled', async () => {
       const editor = hook.editor();
-      const iframe = editor.iframeElement;
+      const iframe = editor.iframeElement as HTMLIFrameElement;
       iframe.tabIndex = 1;
       assertTabIndex(editor, '1', '');
       await pToggleThrobber(editor, () => assertTabIndex(editor, '-1', '1'));

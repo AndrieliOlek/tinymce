@@ -1,19 +1,18 @@
 import { Keys } from '@ephox/agar';
 import { describe, it } from '@ephox/bedrock-client';
-import { TinyAssertions, TinyContentActions, TinyHooks, TinySelections, TinyUiActions } from '@ephox/mcagar';
+import { TinyAssertions, TinyContentActions, TinyHooks, TinySelections, TinyUiActions } from '@ephox/wrap-mcagar';
 
 import Editor from 'tinymce/core/api/Editor';
 import Plugin from 'tinymce/plugins/emoticons/Plugin';
-import Theme from 'tinymce/themes/silver/Theme';
 
-describe('browser.tinymce.plugins.emoticons.AutocompletionTest', () => {
+describe('browser.tinymce.plugins.emoticons.EmoticonAutocompletionTest', () => {
   const hook = TinyHooks.bddSetupLight<Editor>({
     plugins: 'emoticons',
     toolbar: 'emoticons',
     base_url: '/project/tinymce/js/tinymce',
     emoticons_database_url: '/project/tinymce/src/plugins/emoticons/test/js/test-emojis.js',
     emoticons_database_id: 'tinymce.plugins.emoticons.test-emojis.js'
-  }, [ Plugin, Theme ], true);
+  }, [ Plugin ], true);
 
   // NOTE: This is almost identical to charmap
   it('TBA: Autocomplete, trigger an autocomplete and check it appears', async () => {

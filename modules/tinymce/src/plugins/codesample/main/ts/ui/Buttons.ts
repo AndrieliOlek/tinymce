@@ -1,37 +1,47 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
+import { Fun } from '@ephox/katamari';
 
 import Editor from 'tinymce/core/api/Editor';
+import { Menu, Toolbar } from 'tinymce/core/api/ui/Ui';
 
-import * as Dialog from './Dialog';
+type ControlApi = Toolbar.ToolbarButtonInstanceApi | Menu.MenuItemInstanceApi;
 
-const isCodeSampleSelection = (editor: Editor) => {
+const onSetupEditable = <T extends ControlApi>(editor: Editor, onChanged: (api: T) => void = Fun.noop) => (api: T): VoidFunction => {
+  const nodeChanged = () => {
+    api.setEnabled(editor.selection.isEditable());
+    onChanged(api);
+  };
+
+  editor.on('NodeChange', nodeChanged);
+  nodeChanged();
+
+  return () => {
+    editor.off('NodeChange', nodeChanged);
+  };
+};
+
+const isCodeSampleSelection = (editor: Editor): boolean => {
   const node = editor.selection.getStart();
   return editor.dom.is(node, 'pre[class*="language-"]');
 };
 
-const register = (editor: Editor) => {
+const register = (editor: Editor): void => {
+
+  const onAction = () => editor.execCommand('codesample');
+
   editor.ui.registry.addToggleButton('codesample', {
     icon: 'code-sample',
     tooltip: 'Insert/edit code sample',
-    onAction: () => Dialog.open(editor),
-    onSetup: (api) => {
-      const nodeChangeHandler = () => {
-        api.setActive(isCodeSampleSelection(editor));
-      };
-      editor.on('NodeChange', nodeChangeHandler);
-      return () => editor.off('NodeChange', nodeChangeHandler);
-    }
+    onAction,
+    onSetup: onSetupEditable(editor, (api) => {
+      api.setActive(isCodeSampleSelection(editor));
+    })
   });
 
   editor.ui.registry.addMenuItem('codesample', {
     text: 'Code sample...',
     icon: 'code-sample',
-    onAction: () => Dialog.open(editor)
+    onAction,
+    onSetup: onSetupEditable(editor)
   });
 };
 

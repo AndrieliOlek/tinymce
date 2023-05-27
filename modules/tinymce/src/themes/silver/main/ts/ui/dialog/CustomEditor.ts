@@ -1,17 +1,11 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
-import { AddEventsBehaviour, AlloyEvents, Behaviour, Memento, Representing, SimpleSpec } from '@ephox/alloy';
+import { AddEventsBehaviour, AlloyEvents, Behaviour, Memento, SimpleSpec } from '@ephox/alloy';
 import { Dialog } from '@ephox/bridge';
-import { Cell, Obj, Optional } from '@ephox/katamari';
+import { Obj, Optional, Singleton } from '@ephox/katamari';
 
 import Resource from 'tinymce/core/api/Resource';
 
 import { ComposingConfigs } from '../alien/ComposingConfigs';
+import { RepresentingConfigs } from '../alien/RepresentingConfigs';
 
 type CustomEditorSpec = Dialog.CustomEditor;
 type CustomEditorInitFn = Dialog.CustomEditorInitFn;
@@ -20,7 +14,7 @@ const isOldCustomEditor = (spec: CustomEditorSpec): spec is Dialog.CustomEditorO
   Obj.has(spec as Dialog.CustomEditorOld, 'init');
 
 export const renderCustomEditor = (spec: CustomEditorSpec): SimpleSpec => {
-  const editorApi = Cell(Optional.none<Dialog.CustomEditorInit>());
+  const editorApi = Singleton.value<Dialog.CustomEditorInit>();
 
   const memReplaced = Memento.record({
     dom: {
@@ -28,7 +22,7 @@ export const renderCustomEditor = (spec: CustomEditorSpec): SimpleSpec => {
     }
   });
 
-  const initialValue = Cell(Optional.none<string>());
+  const initialValue = Singleton.value<string>();
 
   return {
     dom: {
@@ -45,33 +39,29 @@ export const renderCustomEditor = (spec: CustomEditorSpec): SimpleSpec => {
                 (init: CustomEditorInitFn) => init(ta.element.dom, spec.settings)
               )
             ).then((ea) => {
-              initialValue.get().each((cvalue) => {
+              initialValue.on((cvalue) => {
                 ea.setValue(cvalue);
               });
 
-              initialValue.set(Optional.none());
-              editorApi.set(Optional.some(ea));
+              initialValue.clear();
+              editorApi.set(ea);
             });
           });
         })
       ]),
-      Representing.config({
-        store: {
-          mode: 'manual',
-          getValue: () => editorApi.get().fold(
-            () => initialValue.get().getOr(''),
-            (ed) => ed.getValue()
-          ),
-          setValue: (component, value) => {
-            editorApi.get().fold(
-              () => {
-                initialValue.set(Optional.some(value));
-              },
-              (ed) => ed.setValue(value)
-            );
-          }
+      RepresentingConfigs.withComp(
+        Optional.none(),
+        () => editorApi.get().fold(
+          () => initialValue.get().getOr(''),
+          (ed) => ed.getValue()
+        ),
+        (component, value) => {
+          editorApi.get().fold(
+            () => initialValue.set(value),
+            (ed) => ed.setValue(value)
+          );
         }
-      }),
+      ),
 
       ComposingConfigs.self()
     ]),

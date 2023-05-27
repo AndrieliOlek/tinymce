@@ -1,32 +1,45 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import Editor from 'tinymce/core/api/Editor';
-import { Toolbar } from 'tinymce/core/api/ui/Ui';
+import { Menu, Toolbar } from 'tinymce/core/api/ui/Ui';
 
-const stateSelectorAdapter = (editor: Editor, selector: string[]) => (buttonApi: Toolbar.ToolbarToggleButtonInstanceApi) =>
-  editor.selection.selectorChangedWithUnbind(selector.join(','), buttonApi.setActive).unbind;
+import { isMediaElement } from '../core/Selection';
 
-const register = (editor: Editor) => {
+const onSetupEditable = (editor: Editor) => (api: Toolbar.ToolbarButtonInstanceApi | Menu.MenuItemInstanceApi): VoidFunction => {
+  const nodeChanged = () => {
+    api.setEnabled(editor.selection.isEditable());
+  };
+
+  editor.on('NodeChange', nodeChanged);
+  nodeChanged();
+
+  return () => {
+    editor.off('NodeChange', nodeChanged);
+  };
+};
+
+const register = (editor: Editor): void => {
+  const onAction = () => editor.execCommand('mceMedia');
+
   editor.ui.registry.addToggleButton('media', {
     tooltip: 'Insert/edit media',
     icon: 'embed',
-    onAction: () => {
-      editor.execCommand('mceMedia');
-    },
-    onSetup: stateSelectorAdapter(editor, [ 'img[data-mce-object]', 'span[data-mce-object]', 'div[data-ephox-embed-iri]' ])
+    onAction,
+    onSetup: (buttonApi) => {
+      const selection = editor.selection;
+      buttonApi.setActive(isMediaElement(selection.getNode()));
+      const unbindSelectorChanged = selection.selectorChangedWithUnbind('img[data-mce-object],span[data-mce-object],div[data-ephox-embed-iri]', buttonApi.setActive).unbind;
+      const unbindEditable = onSetupEditable(editor)(buttonApi);
+      return () => {
+        unbindSelectorChanged();
+        unbindEditable();
+      };
+    }
   });
 
   editor.ui.registry.addMenuItem('media', {
     icon: 'embed',
     text: 'Media...',
-    onAction: () => {
-      editor.execCommand('mceMedia');
-    }
+    onAction,
+    onSetup: onSetupEditable(editor)
   });
 };
 

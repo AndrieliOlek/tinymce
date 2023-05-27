@@ -1,10 +1,9 @@
 import { describe, it } from '@ephox/bedrock-client';
-import { TinyAssertions, TinyHooks } from '@ephox/mcagar';
+import { TinyAssertions, TinyHooks } from '@ephox/wrap-mcagar';
 import { assert } from 'chai';
 
 import Editor from 'tinymce/core/api/Editor';
 import Plugin from 'tinymce/plugins/visualchars/Plugin';
-import Theme from 'tinymce/themes/silver/Theme';
 
 describe('browser.tinymce.plugins.visualchars.InlinePluginTest', () => {
   const hook = TinyHooks.bddSetupLight<Editor>({
@@ -12,7 +11,7 @@ describe('browser.tinymce.plugins.visualchars.InlinePluginTest', () => {
     plugins: 'visualchars',
     toolbar: 'visualchars',
     base_url: '/project/tinymce/js/tinymce'
-  }, [ Plugin, Theme ]);
+  }, [ Plugin ]);
 
   it('TINY-6282: Editor should not steal focus when loaded inline with visualchars', () => {
     const editor = hook.editor();

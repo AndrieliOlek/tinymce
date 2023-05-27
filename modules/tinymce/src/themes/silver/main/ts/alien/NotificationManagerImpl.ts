@@ -1,12 +1,5 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
-import { Gui, GuiFactory, InlineView, Layout, LayoutInside, NodeAnchorSpec } from '@ephox/alloy';
-import { Arr, Optional } from '@ephox/katamari';
+import { Boxes, Gui, GuiFactory, InlineView, Layout, MaxHeight, NodeAnchorSpec } from '@ephox/alloy';
+import { Arr, Num, Optional, Type } from '@ephox/katamari';
 import { SugarBody, SugarElement } from '@ephox/sugar';
 
 import Editor from 'tinymce/core/api/Editor';
@@ -16,48 +9,33 @@ import Delay from 'tinymce/core/api/util/Delay';
 import { UiFactoryBackstage } from '../backstage/Backstage';
 import { Notification } from '../ui/general/Notification';
 
-export default (editor: Editor, extras, uiMothership: Gui.GuiSystem): NotificationManagerImpl => {
-  const backstage: UiFactoryBackstage = extras.backstage;
+interface Extras {
+  readonly backstage: UiFactoryBackstage;
+}
 
-  const getLayoutDirection = (rel: 'tc-tc' | 'bc-bc' | 'bc-tc' | 'tc-bc') => {
-    switch (rel) {
-      case 'bc-bc':
-        return LayoutInside.south;
-      case 'tc-tc':
-        return LayoutInside.north;
-      case 'tc-bc':
-        return Layout.north;
-      case 'bc-tc':
-      default:
-        return Layout.south;
-    }
-  };
+export default (editor: Editor, extras: Extras, uiMothership: Gui.GuiSystem): NotificationManagerImpl => {
+  const sharedBackstage = extras.backstage.shared;
 
-  // Since the viewport will change based on the present notifications, we need to move them all to the
-  // top left of the viewport to give an accurate size measurement so we can position them later.
-  const prePositionNotifications = (notifications: NotificationApi[]) => {
-    Arr.each(notifications, (notification) => notification.moveTo(0, 0));
-  };
-
-  const positionNotifications = (notifications: NotificationApi[]) => {
-    if (notifications.length > 0) {
-      Arr.head(notifications).each((firstItem) => firstItem.moveRel(null, 'banner'));
-      Arr.each(notifications, (notification, index) => {
-        if (index > 0) {
-          notification.moveRel(notifications[index - 1].getEl(), 'bc-tc');
-        }
-      });
-    }
-  };
-
-  const reposition = (notifications: NotificationApi[]) => {
-    prePositionNotifications(notifications);
-    positionNotifications(notifications);
+  const getBounds = () => {
+    /* Attempt to ensure that the notifications render below the top of the header and between
+     * whichever is the larger between the bottom of the content area and the bottom of the viewport
+     *
+     * Note: This isn't perfect, but we have a plan to fix it now that TinyMCE 6 removed public methods restricting
+     * our ability to change anything (TINY-6679).
+     *
+     * TODO TINY-8128: use docking and associate the notifications together so they update position automatically
+     * during UI refresh updates.
+     */
+    const contentArea = Boxes.box(SugarElement.fromDom(editor.getContentAreaContainer()));
+    const win = Boxes.win();
+    const x = Num.clamp(win.x, contentArea.x, contentArea.right);
+    const y = Num.clamp(win.y, contentArea.y, contentArea.bottom);
+    const right = Math.max(contentArea.right, win.right);
+    const bottom = Math.max(contentArea.bottom, win.bottom);
+    return Optional.some(Boxes.bounds(x, y, right - x, bottom - y));
   };
 
   const open = (settings: NotificationSpec, closeCallback: () => void): NotificationApi => {
-    const hideCloseButton = !settings.closeButton && settings.timeout && (settings.timeout > 0 || settings.timeout < 0);
-
     const close = () => {
       closeCallback();
       InlineView.hide(notificationWrapper);
@@ -68,11 +46,11 @@ export default (editor: Editor, extras, uiMothership: Gui.GuiSystem): Notificati
         text: settings.text,
         level: Arr.contains([ 'success', 'error', 'warning', 'warn', 'info' ], settings.type) ? settings.type : undefined,
         progress: settings.progressBar === true,
-        icon: Optional.from(settings.icon),
-        closeButton: !hideCloseButton,
+        icon: settings.icon,
+        closeButton: settings.closeButton,
         onAction: close,
-        iconProvider: backstage.shared.providers.icons,
-        translationProvider: backstage.shared.providers.translate
+        iconProvider: sharedBackstage.providers.icons,
+        translationProvider: sharedBackstage.providers.translate
       })
     );
 
@@ -82,46 +60,59 @@ export default (editor: Editor, extras, uiMothership: Gui.GuiSystem): Notificati
           tag: 'div',
           classes: [ 'tox-notifications-container' ]
         },
-        lazySink: extras.backstage.shared.getSink,
-        fireDismissalEventInstead: { },
-        ...backstage.shared.header.isPositionedAtTop() ? { } : { fireRepositionEventInstead: { }}
+        lazySink: sharedBackstage.getSink,
+        fireDismissalEventInstead: {},
+        ...sharedBackstage.header.isPositionedAtTop() ? {} : { fireRepositionEventInstead: {}}
       })
     );
 
     uiMothership.add(notificationWrapper);
 
-    if (settings.timeout > 0) {
-      Delay.setTimeout(() => {
+    if (Type.isNumber(settings.timeout) && settings.timeout > 0) {
+      Delay.setEditorTimeout(editor, () => {
         close();
       }, settings.timeout);
     }
 
-    return {
-      close,
-      moveTo: (x: number, y: number) => {
-        InlineView.showAt(notificationWrapper, {
-          anchor: 'makeshift',
-          x,
-          y
-        }, GuiFactory.premade(notification));
-      },
-      moveRel: (element: Element, rel: 'tc-tc' | 'bc-bc' | 'bc-tc' | 'tc-bc' | 'banner') => {
-        if (rel !== 'banner') {
-          const layoutDirection = getLayoutDirection(rel);
+    const reposition = () => {
+      const notificationSpec = GuiFactory.premade(notification);
+      const anchorOverrides = {
+        maxHeightFunction: MaxHeight.expandable()
+      };
+
+      // TODO TINY-8128: This is a hack. This logic only works if called on every notification in order (as NotificationManager.reposition() does).
+      const allNotifications = editor.notificationManager.getNotifications();
+
+      if (allNotifications[0] === thisNotification) {
+        // first notification goes below the banner element
+        const anchor = {
+          ...sharedBackstage.anchors.banner(),
+          overrides: anchorOverrides
+        };
+        InlineView.showWithinBounds(notificationWrapper, notificationSpec, { anchor }, getBounds);
+      } else {
+        // all other notifications go directly below the previous one
+        Arr.indexOf(allNotifications, thisNotification).each((idx) => {
+          const previousNotification = allNotifications[idx - 1].getEl();
+
           const nodeAnchor: NodeAnchorSpec = {
-            anchor: 'node',
+            type: 'node',
             root: SugarBody.body(),
-            node: Optional.some(SugarElement.fromDom(element)),
+            node: Optional.some(SugarElement.fromDom(previousNotification)),
+            overrides: anchorOverrides,
             layouts: {
-              onRtl: () => [ layoutDirection ],
-              onLtr: () => [ layoutDirection ]
+              onRtl: () => [ Layout.south ],
+              onLtr: () => [ Layout.south ]
             }
           };
-          InlineView.showAt(notificationWrapper, nodeAnchor, GuiFactory.premade(notification));
-        } else {
-          InlineView.showAt(notificationWrapper, extras.backstage.shared.anchors.banner(), GuiFactory.premade(notification));
-        }
-      },
+          InlineView.showWithinBounds(notificationWrapper, notificationSpec, { anchor: nodeAnchor }, getBounds);
+        });
+      }
+    };
+
+    const thisNotification = {
+      close,
+      reposition,
       text: (nuText: string) => {
         // check if component is still mounted
         Notification.updateText(notification, nuText);
@@ -134,6 +125,7 @@ export default (editor: Editor, extras, uiMothership: Gui.GuiSystem): Notificati
         }
       }
     };
+    return thisNotification;
   };
 
   const close = (notification: NotificationApi) => {
@@ -147,7 +139,6 @@ export default (editor: Editor, extras, uiMothership: Gui.GuiSystem): Notificati
   return {
     open,
     close,
-    reposition,
     getArgs
   };
 };

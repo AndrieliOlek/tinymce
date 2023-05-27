@@ -1,17 +1,10 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import RangeUtils from 'tinymce/core/api/dom/RangeUtils';
 
 import * as NodeType from './NodeType';
 
 interface Point {
-  container: Node;
-  offset: number;
+  readonly container: Node;
+  readonly offset: number;
 }
 
 const getNormalizedPoint = (container: Node, offset: number): Point => {

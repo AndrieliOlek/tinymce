@@ -1,17 +1,16 @@
 import { Assertions } from '@ephox/agar';
 import { describe, it } from '@ephox/bedrock-client';
-import { TinyHooks, TinySelections } from '@ephox/mcagar';
+import { TinyHooks, TinySelections } from '@ephox/wrap-mcagar';
 
 import Editor from 'tinymce/core/api/Editor';
 import AstNode from 'tinymce/core/api/html/Node';
 import HtmlSerializer from 'tinymce/core/api/html/Serializer';
-import Theme from 'tinymce/themes/silver/Theme';
 
 describe('browser.tinymce.core.content.EditorGetContentTreeTest', () => {
   const hook = TinyHooks.bddSetupLight<Editor>({
     base_url: '/project/tinymce/js/tinymce',
     inline: true
-  }, [ Theme ]);
+  }, []);
 
   const toHtml = (node: AstNode): string => {
     const htmlSerializer = HtmlSerializer({});

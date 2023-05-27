@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Type } from '@ephox/katamari';
 
 import Editor from 'tinymce/core/api/Editor';
@@ -15,20 +8,18 @@ import { updateList } from '../actions/Update';
 import { getParentList } from '../core/Selection';
 import * as Dialog from '../ui/Dialog';
 
-const queryListCommandState = (editor: Editor, listName: string) => {
-  return () => {
-    const parentList = getParentList(editor);
-    return parentList && parentList.nodeName === listName;
-  };
+const queryListCommandState = (editor: Editor, listName: string) => (): boolean => {
+  const parentList = getParentList(editor);
+  return Type.isNonNullable(parentList) && parentList.nodeName === listName;
 };
 
-const registerDialog = (editor: Editor) => {
+const registerDialog = (editor: Editor): void => {
   editor.addCommand('mceListProps', () => {
     Dialog.open(editor);
   });
 };
 
-const register = (editor: Editor) => {
+const register = (editor: Editor): void => {
   editor.on('BeforeExecCommand', (e) => {
     const cmd = e.command.toLowerCase();
 

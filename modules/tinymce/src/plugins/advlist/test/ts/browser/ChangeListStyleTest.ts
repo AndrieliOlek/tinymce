@@ -1,11 +1,10 @@
 import { context, describe, it } from '@ephox/bedrock-client';
 import { Arr } from '@ephox/katamari';
-import { TinyAssertions, TinyHooks, TinySelections, TinyUiActions } from '@ephox/mcagar';
+import { TinyAssertions, TinyHooks, TinySelections, TinyUiActions } from '@ephox/wrap-mcagar';
 
 import Editor from 'tinymce/core/api/Editor';
 import AdvListPlugin from 'tinymce/plugins/advlist/Plugin';
 import ListsPlugin from 'tinymce/plugins/lists/Plugin';
-import Theme from 'tinymce/themes/silver/Theme';
 
 describe('browser.tinymce.plugins.advlist.ChangeListStyleTest', () => {
   Arr.each([
@@ -20,7 +19,7 @@ describe('browser.tinymce.plugins.advlist.ChangeListStyleTest', () => {
         menubar: false,
         statusbar: false,
         base_url: '/project/tinymce/js/tinymce'
-      }, [ AdvListPlugin, ListsPlugin, Theme ]);
+      }, [ AdvListPlugin, ListsPlugin ]);
 
       const pWaitForMenu = (editor: Editor) => TinyUiActions.pWaitForUi(editor, '.tox-menu.tox-selected-menu');
 

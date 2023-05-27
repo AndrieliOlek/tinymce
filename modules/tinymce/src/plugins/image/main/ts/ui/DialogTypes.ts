@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Optional } from '@ephox/katamari';
 
 import { Dialog } from 'tinymce/core/api/ui/Ui';
@@ -16,51 +9,53 @@ export type ListGroup = Dialog.ListBoxNestedItemSpec;
 export type ListItem = Dialog.ListBoxItemSpec;
 
 export interface UserListItem {
-  text?: string;
-  title?: string;
-  value?: string;
-  url?: string;
-  menu?: UserListItem[];
+  readonly text?: string;
+  readonly title?: string;
+  readonly value?: string;
+  readonly url?: string;
+  readonly menu?: UserListItem[];
 }
 
 export interface ImageDialogInfo {
-  image: ImageData;
-  imageList: Optional<ListItem[]>;
-  classList: Optional<ListItem[]>;
-  hasAdvTab: boolean;
-  hasUploadTab: boolean;
-  hasUploadUrl: boolean;
-  hasUploadHandler: boolean;
-  hasDescription: boolean;
-  hasImageTitle: boolean;
-  hasDimensions: boolean;
-  hasImageCaption: boolean;
-  hasAccessibilityOptions: boolean;
-  automaticUploads: boolean;
-  prependURL: Optional<string>;
+  readonly image: ImageData;
+  readonly imageList: Optional<ListItem[]>;
+  readonly classList: Optional<ListItem[]>;
+  readonly hasAdvTab: boolean;
+  readonly hasUploadTab: boolean;
+  readonly hasUploadUrl: boolean;
+  readonly hasUploadHandler: boolean;
+  readonly hasDescription: boolean;
+  readonly hasImageTitle: boolean;
+  readonly hasDimensions: boolean;
+  readonly hasImageCaption: boolean;
+  readonly hasAccessibilityOptions: boolean;
+  readonly automaticUploads: boolean;
+  readonly prependURL: Optional<string>;
+}
+
+export interface ImageMeta {
+  text?: string;
+  width?: string;
+  height?: string;
+  alt?: string | null;
+  title?: string;
+  class?: string;
+  style?: string;
+  caption?: boolean;
+  vspace?: string;
+  border?: string;
+  hspace?: string;
+  borderstyle?: string;
+  isDecorative?: boolean;
 }
 
 export interface ImageDialogData {
   src: {
     value: string;
-    meta?: {
-      text?: string;
-      width?: string;
-      height?: string;
-      alt?: string;
-      title?: string;
-      class?: string;
-      style?: string;
-      caption?: boolean;
-      vspace?: string;
-      border?: string;
-      hspace?: string;
-      borderstyle?: string;
-      isDecorative?: boolean;
-    };
+    meta?: ImageMeta;
   };
   images: string;
-  alt: string;
+  alt: string | null;
   title: string;
   dimensions: {
     width: string;

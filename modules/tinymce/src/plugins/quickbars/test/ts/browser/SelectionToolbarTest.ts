@@ -1,12 +1,11 @@
 import { ApproxStructure, Assertions, UiFinder, Waiter } from '@ephox/agar';
 import { describe, it } from '@ephox/bedrock-client';
-import { TinyHooks, TinySelections } from '@ephox/mcagar';
 import { SugarBody } from '@ephox/sugar';
+import { TinyHooks, TinySelections } from '@ephox/wrap-mcagar';
 
 import Editor from 'tinymce/core/api/Editor';
 import LinkPlugin from 'tinymce/plugins/link/Plugin';
 import QuickbarsPlugin from 'tinymce/plugins/quickbars/Plugin';
-import Theme from 'tinymce/themes/silver/Theme';
 
 enum Alignment {
   Left = 'left',
@@ -21,18 +20,17 @@ describe('browser.tinymce.plugins.quickbars.SelectionToolbarTest', () => {
     toolbar: false,
     menubar: false,
     base_url: '/project/tinymce/js/tinymce'
-  }, [ Theme, LinkPlugin, QuickbarsPlugin ], true);
+  }, [ LinkPlugin, QuickbarsPlugin ], true);
 
   const imgSrc = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
-  const pAssertButtonToggledState = async (name: string, state: boolean) => {
-    const button = await UiFinder.pWaitForVisible('Wait for button', SugarBody.body(), `.tox-toolbar button[aria-label="${name}"]`);
-    await Waiter.pTryUntil('Wait for toolbar button state', () => {
+  const pAssertButtonToggledState = (name: string, state: boolean) =>
+    Waiter.pTryUntil('Wait for toolbar button state', () => {
+      const button = UiFinder.findIn(SugarBody.body(), `.tox-toolbar button[aria-label="${name}"]`).getOrDie();
       return Assertions.assertStructure('', ApproxStructure.build((s, _str, arr) => s.element('button', {
         classes: [ state ? arr.has('tox-tbtn--enabled') : arr.not('tox-tbtn--enabled') ]
       })), button);
     });
-  };
 
   const pWaitForTextToolbarAndAssertState = async (bold: boolean, italic: boolean, heading2: boolean, heading3: boolean, link: boolean, blockquote: boolean) => {
     await pAssertButtonToggledState('Bold', bold);

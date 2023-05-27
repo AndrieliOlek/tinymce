@@ -147,11 +147,11 @@ const factory: CompositeSketchFactory<TouchMenuDetail, TouchMenuSpec> = (detail,
           forceHoverOn(component);
           const iMenu = Menu.sketch({
             ...externals.menu(),
-            items
+            items: items.getOr([])
           });
           const sandbox = Coupling.getCoupled(component, 'sandbox');
           const anchor = detail.getAnchor(component);
-          InlineView.showAt(sandbox, anchor, iMenu);
+          InlineView.showAt(sandbox, iMenu, { anchor });
         });
       }),
 
@@ -172,10 +172,10 @@ const factory: CompositeSketchFactory<TouchMenuDetail, TouchMenuSpec> = (detail,
             Focus.active(dos).each(Focus.blur);
 
             // could not find an item, so check the button itself
-            const hoverF = ElementFromPoint.insideComponent(component, e.clientX, e.clientY).fold(
+            const hoverF = ElementFromPoint.insideComponent(component, e.clientX, e.clientY).fold<TouchHoverState>(
               Fun.constant(hoverOff),
               Fun.constant(hoverOn)
-            ) as TouchHoverState;
+            );
 
             hoverF(component);
           }, (elem) => {

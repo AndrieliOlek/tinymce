@@ -1,20 +1,10 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
-const appendClickRemove = (link, evt) => {
+const appendClickRemove = (link: HTMLAnchorElement, evt: MouseEvent): void => {
   document.body.appendChild(link);
   link.dispatchEvent(evt);
   document.body.removeChild(link);
 };
 
-const open = (url) => {
-  // Chrome and Webkit has implemented noopener and works correctly with/without popup blocker
-  // Firefox has it implemented noopener but when the popup blocker is activated it doesn't work
-  // Edge has only implemented noreferrer and it seems to remove opener as well
+const open = (url: string): void => {
   const link = document.createElement('a');
   link.target = '_blank';
   link.href = url;

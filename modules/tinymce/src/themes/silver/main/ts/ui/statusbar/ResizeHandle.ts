@@ -1,24 +1,16 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
-import { Behaviour, Dragging, Focusing, Keying, SimpleSpec, Tabstopping } from '@ephox/alloy';
+import { Dragging, Focusing, Keying, SimpleSpec, Tabstopping } from '@ephox/alloy';
 import { Optional } from '@ephox/katamari';
 import { SugarPosition } from '@ephox/sugar';
 
 import Editor from 'tinymce/core/api/Editor';
 
+import * as Options from '../../api/Options';
 import { UiFactoryBackstageProviders } from '../../backstage/Backstage';
-import { get as getIcon } from '../icons/Icons';
+import * as Icons from '../icons/Icons';
 import { resize, ResizeTypes } from '../sizing/Resize';
 
 const getResizeType = (editor: Editor): ResizeTypes => {
-  // If autoresize is enabled, disable resize
-  const fallback = !editor.hasPlugin('autoresize');
-  const resize = editor.getParam('resize', fallback);
+  const resize = Options.getResize(editor);
   if (resize === false) {
     return ResizeTypes.None;
   } else if (resize === 'both') {
@@ -41,16 +33,13 @@ export const renderResizeHandler = (editor: Editor, providersBackstage: UiFactor
     return Optional.none();
   }
 
-  return Optional.some({
-    dom: {
-      tag: 'div',
-      classes: [ 'tox-statusbar__resize-handle' ],
-      attributes: {
-        title: providersBackstage.translate('Resize'), // TODO: tooltips AP-213
-      },
-      innerHtml: getIcon('resize-handle', providersBackstage.icons)
+  return Optional.some(Icons.render('resize-handle', {
+    tag: 'div',
+    classes: [ 'tox-statusbar__resize-handle' ],
+    attributes: {
+      title: providersBackstage.translate('Resize'), // TODO: tooltips AP-213
     },
-    behaviours: Behaviour.derive([
+    behaviours: [
       Dragging.config({
         mode: 'mouse',
         repositionTarget: false,
@@ -66,6 +55,6 @@ export const renderResizeHandler = (editor: Editor, providersBackstage: UiFactor
       }),
       Tabstopping.config({}),
       Focusing.config({})
-    ])
-  });
+    ]
+  }, providersBackstage.icons));
 };

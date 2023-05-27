@@ -1,34 +1,31 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
+import { Type } from '@ephox/katamari';
 
 import DOMUtils from 'tinymce/core/api/dom/DOMUtils';
+import Editor from 'tinymce/core/api/Editor';
 import Tools from 'tinymce/core/api/util/Tools';
 
-import * as Settings from '../api/Settings';
+import * as Options from '../api/Options';
 
-const displayErrorMessage = (editor, message) => {
+const displayErrorMessage = (editor: Editor, message: string): void => {
   editor.notificationManager.open({
     text: message,
     type: 'error'
   });
 };
 
-const save = (editor) => {
-  const formObj = DOMUtils.DOM.getParent(editor.id, 'form') as HTMLFormElement;
+const save = (editor: Editor): void => {
+  const formObj = DOMUtils.DOM.getParent(editor.id, 'form');
 
-  if (Settings.enableWhenDirty(editor) && !editor.isDirty()) {
+  if (Options.enableWhenDirty(editor) && !editor.isDirty()) {
     return;
   }
 
   editor.save();
 
   // Use callback instead
-  if (Settings.hasOnSaveCallback(editor)) {
-    editor.execCallback('save_onsavecallback', editor);
+  const onSaveCallback = Options.getOnSaveCallback(editor);
+  if (Type.isFunction(onSaveCallback)) {
+    onSaveCallback.call(editor, editor);
     editor.nodeChanged();
     return;
   }
@@ -52,12 +49,13 @@ const save = (editor) => {
   }
 };
 
-const cancel = (editor) => {
+const cancel = (editor: Editor): void => {
   const h = Tools.trim(editor.startContent);
 
   // Use callback instead
-  if (Settings.hasOnCancelCallback(editor)) {
-    editor.execCallback('save_oncancelcallback', editor);
+  const onCancelCallback = Options.getOnCancelCallback(editor);
+  if (Type.isFunction(onCancelCallback)) {
+    onCancelCallback.call(editor, editor);
     return;
   }
 

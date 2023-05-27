@@ -1,9 +1,8 @@
 import { Dragger } from '@ephox/dragster';
 import { Fun, Optional } from '@ephox/katamari';
 import { Bindable, Event, Events } from '@ephox/porkbun';
-import { Attribute, Class, Compare, Css, DomEvent, SelectorFind, SugarBody, SugarElement } from '@ephox/sugar';
+import { Attribute, Class, Compare, ContentEditable, Css, DomEvent, SelectorFind, SugarBody, SugarElement } from '@ephox/sugar';
 
-import { findClosestContentEditable, isContentEditableTrue } from '../alien/ContentEditable';
 import { ResizeWire } from '../api/ResizeWire';
 import * as Styles from '../style/Styles';
 import * as CellUtils from '../util/CellUtils';
@@ -53,7 +52,7 @@ export const BarManager = (wire: ResizeWire): BarManager => {
 
   let hoverTable = Optional.none<SugarElement<HTMLTableElement>>();
 
-  const getResizer = (element: SugarElement, type: string) => {
+  const getResizer = (element: SugarElement<Element>, type: string) => {
     return Optional.from(Attribute.get(element, type));
   };
 
@@ -70,7 +69,7 @@ export const BarManager = (wire: ResizeWire): BarManager => {
     });
   });
 
-  const getDelta = (target: SugarElement, dir: string) => {
+  const getDelta = (target: SugarElement<Element>, dir: string) => {
     const newX = CellUtils.getCssValue(target, dir);
     const oldX = CellUtils.getAttrValue(target, 'data-initial-' + dir, 0);
     return newX - oldX;
@@ -98,7 +97,7 @@ export const BarManager = (wire: ResizeWire): BarManager => {
 
   });
 
-  const handler = (target: SugarElement, dir: string) => {
+  const handler = (target: SugarElement<Element>, dir: string) => {
     events.trigger.startAdjust();
     mutation.assign(target);
     Attribute.set(target, 'data-initial-' + dir, CellUtils.getCssValue(target, dir));
@@ -118,11 +117,12 @@ export const BarManager = (wire: ResizeWire): BarManager => {
     }
   });
 
-  const isRoot = (e: SugarElement) => {
+  const isRoot = (e: SugarElement<Node>) => {
     return Compare.eq(e, wire.view());
   };
 
-  const findClosestEditableTable = (target: SugarElement): Optional<SugarElement> => SelectorFind.closest(target, 'table', isRoot).filter((table) => findClosestContentEditable(table, isRoot).exists(isContentEditableTrue));
+  const findClosestEditableTable = (target: SugarElement<Node>): Optional<SugarElement<HTMLTableElement>> =>
+    SelectorFind.closest<HTMLTableElement>(target, 'table', isRoot).filter(ContentEditable.isEditable);
 
   /* mouseover on table: When the mouse moves within the CONTENT AREA (NOT THE TABLE), refresh the bars. */
   const mouseover = DomEvent.bind(wire.view(), 'mouseover', (event) => {
@@ -138,8 +138,10 @@ export const BarManager = (wire: ResizeWire): BarManager => {
         }
       },
       (table) => {
-        hoverTable = Optional.some(table);
-        Bars.refresh(wire, table);
+        if (resizing.isActive()) {
+          hoverTable = Optional.some(table);
+          Bars.refresh(wire, table);
+        }
       }
     );
   });

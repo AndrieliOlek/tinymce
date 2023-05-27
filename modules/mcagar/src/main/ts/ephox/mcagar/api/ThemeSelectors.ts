@@ -1,6 +1,7 @@
 import { Arr, Fun, Global, Obj } from '@ephox/katamari';
 
 import { Editor } from '../alien/EditorTypes';
+import { get as getOption } from '../alien/Options';
 
 const isSilver = (): boolean => {
   const tinymce = Global.tinymce;
@@ -26,12 +27,12 @@ const ModernThemeSelectors: ThemeSelectors = {
   menuBarSelector: '.mce-menubar',
   dialogSelector: '.mce-window',
   dialogCancelSelector: 'div[role="button"]:contains(Cancel)',
-  dialogCloseSelector: 'div[role="button"].mce-close',
+  dialogCloseSelector: 'button.mce-close',
   dialogSubmitSelector: 'div[role="button"].mce-primary'
 };
 
 const SilverThemeSelectors: ThemeSelectors = {
-  toolBarSelector: (editor: Editor) => Arr.exists([ editor.getParam('toolbar_mode'), editor.getParam('toolbar_drawer') ], (s) => s === 'floating' || s === 'sliding') ? '.tox-toolbar-overlord' : '.tox-toolbar',
+  toolBarSelector: (editor: Editor) => Arr.exists([ getOption(editor, 'toolbar_mode'), getOption(editor, 'toolbar_drawer') ], (s) => s === 'floating' || s === 'sliding') ? '.tox-toolbar-overlord' : '.tox-toolbar',
   menuBarSelector: '.tox-menubar',
   dialogSelector: 'div[role="dialog"]',
   dialogCancelSelector: '.tox-button:contains("Cancel")',

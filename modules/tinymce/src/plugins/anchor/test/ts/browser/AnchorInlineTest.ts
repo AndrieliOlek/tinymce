@@ -1,10 +1,9 @@
 import { Keys } from '@ephox/agar';
 import { describe, it } from '@ephox/bedrock-client';
-import { TinyAssertions, TinyContentActions, TinyHooks, TinySelections } from '@ephox/mcagar';
+import { TinyAssertions, TinyContentActions, TinyHooks, TinySelections } from '@ephox/wrap-mcagar';
 
 import Editor from 'tinymce/core/api/Editor';
 import Plugin from 'tinymce/plugins/anchor/Plugin';
-import Theme from 'tinymce/themes/silver/Theme';
 
 import { pAddAnchor } from '../module/Helpers';
 
@@ -13,7 +12,7 @@ describe('browser.tinymce.plugins.anchor.AnchorInlineTest', () => {
     plugins: 'anchor',
     toolbar: 'anchor',
     base_url: '/project/tinymce/js/tinymce'
-  }, [ Plugin, Theme ], true);
+  }, [ Plugin ], true);
 
   // Note: HTML should not be contained in the anchor because of the allow_html_in_named_anchor setting which is false by default
   it('TBA: Add anchor by selecting text content, then check that anchor is inserted correctly', async () => {

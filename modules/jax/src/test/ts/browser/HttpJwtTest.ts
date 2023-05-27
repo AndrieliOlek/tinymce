@@ -1,4 +1,4 @@
-import { assert, UnitTest } from '@ephox/bedrock-client';
+import { Assert, UnitTest } from '@ephox/bedrock-client';
 import { Arr, FutureResult, Result } from '@ephox/katamari';
 
 import { DataType } from 'ephox/jax/core/DataType';
@@ -8,11 +8,11 @@ import { JwtTokenFactory } from 'ephox/jax/core/HttpTypes';
 
 /* eslint-disable no-console */
 
-const expectError = (label: string, response: FutureResult<any, HttpError>, expectedCalls: string[], actualCalls: string[]) => FutureResult.nu((callback) => {
+const expectError = (label: string, response: FutureResult<any, HttpError<DataType.JSON>>, expectedCalls: string[], actualCalls: string[]) => FutureResult.nu((callback) => {
   response.get((res) => {
     res.fold((_err) => {
       console.log(label, 'successfully failed');
-      assert.eq(expectedCalls, actualCalls);
+      Assert.eq('', expectedCalls, actualCalls);
       actualCalls = [];
       callback(Result.value({ }));
     }, (_val) => {
@@ -21,15 +21,15 @@ const expectError = (label: string, response: FutureResult<any, HttpError>, expe
   });
 });
 
-const expectValue = (label: string, value: any, response: FutureResult<any, HttpError>, expectedCalls: string[], actualCalls: string[]) => FutureResult.nu((callback) => {
+const expectValue = (label: string, value: any, response: FutureResult<any, HttpError<DataType.JSON>>, expectedCalls: string[], actualCalls: string[]) => FutureResult.nu((callback) => {
   response.get((res) => {
     res.fold((err) => {
       callback(Result.error(new Error(err.message)));
     }, (val) => {
       try {
-        assert.eq(value, val);
+        Assert.eq('', value, val);
         console.log(label, 'passed with ', val);
-        assert.eq(expectedCalls, actualCalls);
+        Assert.eq('', expectedCalls, actualCalls);
         actualCalls = [];
         callback(Result.value({}));
       } catch (err) {
@@ -42,7 +42,7 @@ const expectValue = (label: string, value: any, response: FutureResult<any, Http
 UnitTest.asynctest('HttpTest', (success, failure) => {
   const invalidCalls: string[] = [];
   const validCalls: string[] = [];
-  const fakeFactory = (calls: string[]): JwtTokenFactory => (fresh) => {
+  const fakeFactory = (calls: string[]): JwtTokenFactory<DataType.JSON> => (fresh) => {
     if (fresh) {
       calls.push('fresh');
       return FutureResult.value('token');
@@ -53,14 +53,14 @@ UnitTest.asynctest('HttpTest', (success, failure) => {
   };
 
   const responses = [
-    expectError('GET on invalid url', HttpJwt.get(
+    expectError('GET on invalid url', HttpJwt.get<DataType.JSON>(
       {
         url: '/custom/jax/sample/token/invalid',
         responseType: DataType.JSON
       },
       fakeFactory(invalidCalls)
     ), [ 'cached', 'fresh' ], invalidCalls),
-    expectValue('GET on valid url', {}, HttpJwt.get(
+    expectValue('GET on valid url', {}, HttpJwt.get<DataType.JSON>(
       {
         url: '/custom/jax/sample/token/valid',
         responseType: DataType.JSON

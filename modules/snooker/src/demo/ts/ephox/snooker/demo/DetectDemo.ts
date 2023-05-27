@@ -7,9 +7,9 @@ import { ResizeWire } from 'ephox/snooker/api/ResizeWire';
 import * as TableOperations from 'ephox/snooker/api/TableOperations';
 import { TableResize } from 'ephox/snooker/api/TableResize';
 import { TableSize } from 'ephox/snooker/api/TableSize';
-import { RunOperationOutput, TargetElement, TargetSelection } from 'ephox/snooker/model/RunOperation';
+import { OperationCallback, TargetElement, TargetSelection } from 'ephox/snooker/model/RunOperation';
 
-Ready.execute(() => {
+Ready.document(() => {
 
   const tester = SugarElement.fromHtml<HTMLTableElement>(
     '<table border=1>' +
@@ -123,9 +123,9 @@ Ready.execute(() => {
     '</table>');
 
   const ephoxUi = SelectorFind.first('#ephox-ui').getOrDie();
-  const ltrs = SugarElement.fromHtml('<div class="ltrs"></div>');
+  const ltrs = SugarElement.fromHtml<HTMLDivElement>('<div class="ltrs"></div>');
   InsertAll.append(ltrs, [ SugarElement.fromHtml('<p>Left to Right tables</p>'), tester, SugarElement.fromTag('p'), subject2 ]);
-  const rtls = SugarElement.fromHtml('<div dir="rtl"></div>');
+  const rtls = SugarElement.fromHtml<HTMLDivElement>('<div dir="rtl"></div>');
   InsertAll.append(rtls, [ SugarElement.fromHtml('<p>Right to Left table</p>'), subject3 ]);
   InsertAll.append(ephoxUi, [ ltrs, rtls ]);
 
@@ -138,7 +138,7 @@ Ready.execute(() => {
 
   // For firefox.
   // eslint-disable-next-line @tinymce/prefer-fun
-  Ready.execute(() => {
+  Ready.document(() => {
     // document.execCommand("enableInlineTableEditing", null, false);
     // document.execCommand("enableObjectResizing", false, "false");
   });
@@ -184,8 +184,8 @@ Ready.execute(() => {
 
   const makeColumnHeader = makeButton('Make column header');
   const unmakeColumnHeader = makeButton('Unmake column header');
-  const makeRowHeader = makeButton('makeRowHeader');
-  const unmakeRowHeader = makeButton('unmakeRowHeader');
+  const makeRowHeader = makeButton('Make row header');
+  const makeRowBody = makeButton('Unmake row header');
 
   const detection = (): Optional<SugarElement<Element>> =>
     Optional.from(window.getSelection()).bind((selection) => {
@@ -239,10 +239,11 @@ Ready.execute(() => {
     replace,
     gap,
     col,
+    colGap: col as Generators['colGap'],
     colgroup
   };
 
-  const runOperation = (operation: (wire: ResizeWire, table: SugarElement, target: TargetElement & TargetSelection, generators: Generators, tableSize: TableSize) => Optional<RunOperationOutput>) => {
+  const runOperation = (operation: OperationCallback<TargetElement & TargetSelection>) => {
     return (_event: EventArgs) => {
       detection().each((start) => {
         const target = {
@@ -253,7 +254,7 @@ Ready.execute(() => {
         // wire, table, target, generators, direction
         const table = SelectorFind.ancestor(start, 'table').getOrDie() as SugarElement<HTMLTableElement>;
         const tableSize = TableSize.getTableSize(table);
-        operation(ResizeWire.only(ephoxUi, isResizable), table, target, generators, tableSize);
+        operation(table, target, generators, { sizing: tableSize });
       });
     };
   };
@@ -272,5 +273,5 @@ Ready.execute(() => {
   DomEvent.bind(makeColumnHeader, 'click', runOperation(TableOperations.makeColumnHeader));
   DomEvent.bind(unmakeColumnHeader, 'click', runOperation(TableOperations.unmakeColumnHeader));
   DomEvent.bind(makeRowHeader, 'click', runOperation(TableOperations.makeRowHeader));
-  DomEvent.bind(unmakeRowHeader, 'click', runOperation(TableOperations.unmakeRowHeader));
+  DomEvent.bind(makeRowBody, 'click', runOperation(TableOperations.makeRowBody));
 });

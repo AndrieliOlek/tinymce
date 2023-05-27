@@ -1,4 +1,4 @@
-import { ApproxStructure, Assertions, GeneralSteps, Logger, PhantomSkipper, Step, Waiter } from '@ephox/agar';
+import { ApproxStructure, Assertions, GeneralSteps, Logger, Step, Waiter } from '@ephox/agar';
 import { UnitTest } from '@ephox/bedrock-client';
 import { Class, Css, Traverse } from '@ephox/sugar';
 
@@ -9,11 +9,6 @@ import * as GuiSetup from 'ephox/alloy/api/testhelpers/GuiSetup';
 import { Container } from 'ephox/alloy/api/ui/Container';
 
 UnitTest.asynctest('SlidingTest', (success, failure) => {
-
-  // Seems to have stopped working on phantomjs
-  if (PhantomSkipper.detect()) {
-    return success();
-  }
 
   const slidingStyles = [
     '.test-sliding-closed { visibility: hidden; opacity: 0; }',
@@ -239,6 +234,36 @@ UnitTest.asynctest('SlidingTest', (success, failure) => {
         ]),
         10,
         4000
+      ),
+
+      store.sClear,
+      Step.sync(() => {
+        Sliding.immediateGrow(component);
+      }),
+      Logger.t(
+        'Sliding.immediateGrow()',
+        GeneralSteps.sequence([
+          store.sAssertEq('Finished growing', [ 'onStartGrow', 'onGrown' ]),
+          Assertions.sAssertStructure(
+            'Checking structure',
+            ApproxStructure.build((s, str, arr) => s.element('div', {
+              classes: [
+                arr.not('test-sliding-width-shrinking'),
+                arr.not('test-sliding-width-growing'),
+                arr.not('test-sliding-closed'),
+                arr.has('test-sliding-open')
+              ],
+              styles: {
+                width: str.is('300px')
+              }
+            })),
+            component.element
+          ),
+          Step.sync(() => {
+            Assertions.assertEq('Checking hasGrown = true', true, Sliding.hasGrown(component));
+          }),
+          store.sClear
+        ])
       ),
 
       GuiSetup.mRemoveStyles

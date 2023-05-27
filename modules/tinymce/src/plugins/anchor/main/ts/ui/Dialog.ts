@@ -1,18 +1,11 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import Editor from 'tinymce/core/api/Editor';
 
 import * as Anchor from '../core/Anchor';
 
-const insertAnchor = (editor: Editor, newId: string) => {
+const insertAnchor = (editor: Editor, newId: string): boolean => {
   if (!Anchor.isValidId(newId)) {
     editor.windowManager.alert(
-      'Id should start with a letter, followed only by letters, numbers, dashes, dots, colons or underscores.'
+      'ID should start with a letter, followed only by letters, numbers, dashes, dots, colons or underscores.'
     );
     return false;
   } else {
@@ -21,7 +14,7 @@ const insertAnchor = (editor: Editor, newId: string) => {
   }
 };
 
-const open = (editor: Editor) => {
+const open = (editor: Editor): void => {
   const currentId = Anchor.getId(editor);
 
   editor.windowManager.open({

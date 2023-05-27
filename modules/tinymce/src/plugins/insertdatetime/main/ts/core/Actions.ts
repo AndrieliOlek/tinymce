@@ -1,18 +1,13 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
+import Editor from 'tinymce/core/api/Editor';
 
-import * as Settings from '../api/Settings';
+import * as Options from '../api/Options';
 
 const daysShort = 'Sun Mon Tue Wed Thu Fri Sat Sun'.split(' ');
 const daysLong = 'Sunday Monday Tuesday Wednesday Thursday Friday Saturday Sunday'.split(' ');
 const monthsShort = 'Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ');
 const monthsLong = 'January February March April May June July August September October November December'.split(' ');
 
-const addZeros = (value, len) => {
+const addZeros = (value: string | number, len: number): string => {
   value = '' + value;
 
   if (value.length < len) {
@@ -24,13 +19,11 @@ const addZeros = (value, len) => {
   return value;
 };
 
-const getDateTime = (editor, fmt, date?) => {
-  date = date || new Date();
-
+const getDateTime = (editor: Editor, fmt: string, date: Date = new Date()): string => {
   fmt = fmt.replace('%D', '%m/%d/%Y');
   fmt = fmt.replace('%r', '%I:%M:%S %p');
   fmt = fmt.replace('%Y', '' + date.getFullYear());
-  fmt = fmt.replace('%y', '' + date.getYear());
+  fmt = fmt.replace('%y', '' + (date as any).getYear());
   fmt = fmt.replace('%m', addZeros(date.getMonth() + 1, 2));
   fmt = fmt.replace('%d', addZeros(date.getDate(), 2));
   fmt = fmt.replace('%H', '' + addZeros(date.getHours(), 2));
@@ -47,16 +40,15 @@ const getDateTime = (editor, fmt, date?) => {
   return fmt;
 };
 
-const updateElement = (editor, timeElm, computerTime, userTime) => {
+const updateElement = (editor: Editor, timeElm: HTMLTimeElement, computerTime: string, userTime: string) => {
   const newTimeElm = editor.dom.create('time', { datetime: computerTime }, userTime);
-  timeElm.parentNode.insertBefore(newTimeElm, timeElm);
-  editor.dom.remove(timeElm);
+  editor.dom.replace(newTimeElm, timeElm);
   editor.selection.select(newTimeElm, true);
   editor.selection.collapse(false);
 };
 
-const insertDateTime = (editor, format) => {
-  if (Settings.shouldInsertTimeElement(editor)) {
+const insertDateTime = (editor: Editor, format: string): void => {
+  if (Options.shouldInsertTimeElement(editor)) {
     const userTime = getDateTime(editor, format);
     let computerTime;
 

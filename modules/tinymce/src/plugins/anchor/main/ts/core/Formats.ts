@@ -1,15 +1,9 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import Editor from 'tinymce/core/api/Editor';
+import { Format } from 'tinymce/core/fmt/FormatTypes';
 
 import * as Utils from './Utils';
 
-const registerFormats = (editor: Editor) => {
+const registerFormats = (editor: Editor): void => {
   editor.formatter.register('namedAnchor', {
     inline: 'a',
     selector: Utils.namedAnchorSelector,
@@ -19,7 +13,7 @@ const registerFormats = (editor: Editor) => {
     attributes: {
       id: '%value'
     },
-    onmatch: (node: Node, _fmt, _itemName: string) => {
+    onmatch: (node: Node, _fmt: Format, _itemName: string) => {
       return Utils.isNamedAnchor(node);
     }
   });

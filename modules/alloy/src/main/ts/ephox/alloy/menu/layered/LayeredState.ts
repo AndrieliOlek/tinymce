@@ -1,4 +1,4 @@
-import { Arr, Cell, Obj, Optional, Optionals } from '@ephox/katamari';
+import { Arr, Cell, Obj, Optional, Optionals, Singleton } from '@ephox/katamari';
 
 import { AlloyComponent } from '../../api/component/ComponentApi';
 import { MenuPreparation } from '../../ui/single/TieredMenuSpec';
@@ -9,7 +9,11 @@ export type MenuDirectory = Record<string, string[]>;
 
 // A tuple of (item, menu). This can be used to refresh the menu and position them next to the right
 // triggering items.
-export interface LayeredItemTrigger { triggeringItem: AlloyComponent; triggeredMenu: AlloyComponent; triggeringPath: string[] }
+export interface LayeredItemTrigger {
+  readonly triggeringItem: AlloyComponent;
+  readonly triggeredMenu: AlloyComponent;
+  readonly triggeringPath: string[];
+}
 
 export interface LayeredState {
   setContents: (sPrimary: string, sMenus: Record<string, MenuPreparation>, sExpansions: Record<string, string>, dir: MenuDirectory) => void;
@@ -31,7 +35,7 @@ const init = (): LayeredState => {
   const expansions: Cell<Record<string, string>> = Cell({ });
   const menus: Cell<Record<string, MenuPreparation>> = Cell({ });
   const paths: Cell<Record<string, string[]>> = Cell({ });
-  const primary: Cell<Optional<string>> = Cell(Optional.none());
+  const primary = Singleton.value<string>();
 
   // Probably think of a better way to store this information.
   const directory: Cell<MenuDirectory> = Cell({ });
@@ -40,7 +44,7 @@ const init = (): LayeredState => {
     expansions.set({});
     menus.set({});
     paths.set({});
-    primary.set(Optional.none());
+    primary.clear();
   };
 
   const isClear = (): boolean => primary.get().isNone();
@@ -56,7 +60,7 @@ const init = (): LayeredState => {
   };
 
   const setContents = (sPrimary: string, sMenus: Record<string, MenuPreparation>, sExpansions: Record<string, string>, dir: MenuDirectory): void => {
-    primary.set(Optional.some(sPrimary));
+    primary.set(sPrimary);
     expansions.set(sExpansions);
     menus.set(sMenus);
     directory.set(dir);

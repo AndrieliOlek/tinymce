@@ -1,16 +1,15 @@
-import { ApproxStructure, Assertions, FocusTools, Keys, Mouse, PhantomSkipper } from '@ephox/agar';
+import { ApproxStructure, Assertions, FocusTools, Keys, Mouse, TestStore } from '@ephox/agar';
 import { TestHelpers } from '@ephox/alloy';
 import { describe, it } from '@ephox/bedrock-client';
 import { Arr } from '@ephox/katamari';
-import { TinyHooks, TinyUiActions } from '@ephox/mcagar';
 import { SugarBody, SugarDocument } from '@ephox/sugar';
+import { TinyHooks, TinyUiActions } from '@ephox/wrap-mcagar';
 
 import Editor from 'tinymce/core/api/Editor';
 import { Menu } from 'tinymce/core/api/ui/Ui';
-import Theme from 'tinymce/themes/silver/Theme';
 
 describe('browser.tinymce.themes.silver.skin.OxideGridCollectionMenuTest', () => {
-  const store = TestHelpers.TestStore();
+  const store = TestStore();
   const hook = TinyHooks.bddSetup<Editor>({
     toolbar: 'grid-button',
     base_url: '/project/tinymce/js/tinymce',
@@ -32,7 +31,7 @@ describe('browser.tinymce.themes.silver.skin.OxideGridCollectionMenuTest', () =>
         onItemAction: store.adder('onItemAction')
       });
     }
-  }, [ Theme ]);
+  }, []);
 
   TestHelpers.GuiSetup.bddAddStyles(SugarDocument.getDocument(), [
     ':focus { background-color: rgb(222, 224, 226); }'
@@ -71,13 +70,10 @@ describe('browser.tinymce.themes.silver.skin.OxideGridCollectionMenuTest', () =>
       menu
     );
 
-    // Without layout, the flatgrid cannot be calculated on phantom
-    if (!PhantomSkipper.detect()) {
-      await FocusTools.pTryOnSelector('Focus should be on 1', doc, '.tox-collection__item[title="1"]');
-      TinyUiActions.keydown(editor, Keys.right());
-      await FocusTools.pTryOnSelector('Focus should be on 2', doc, '.tox-collection__item[title="2"]');
-      TinyUiActions.keydown(editor, Keys.right());
-      await FocusTools.pTryOnSelector('Focus should be on 3', doc, '.tox-collection__item[title="3"]');
-    }
+    await FocusTools.pTryOnSelector('Focus should be on 1', doc, '.tox-collection__item[title="1"]');
+    TinyUiActions.keydown(editor, Keys.right());
+    await FocusTools.pTryOnSelector('Focus should be on 2', doc, '.tox-collection__item[title="2"]');
+    TinyUiActions.keydown(editor, Keys.right());
+    await FocusTools.pTryOnSelector('Focus should be on 3', doc, '.tox-collection__item[title="3"]');
   });
 });

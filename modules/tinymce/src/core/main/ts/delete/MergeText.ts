@@ -1,36 +1,12 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
-import { Arr, Strings, Unicode } from '@ephox/katamari';
+import { Strings } from '@ephox/katamari';
 import { PredicateFind, Remove, SugarElement } from '@ephox/sugar';
 
 import CaretPosition from '../caret/CaretPosition';
 import * as ElementType from '../dom/ElementType';
 import * as Nbsps from '../keyboard/Nbsps';
-import { isNbsp, isWhiteSpace } from '../text/CharType';
+import * as Whitespace from '../text/Whitespace';
 
-const normalizeContent = (content: string, isStartOfContent: boolean, isEndOfContent: boolean): string => {
-  const result = Arr.foldl(content, (acc, c) => {
-    // Are we dealing with a char other than some collapsible whitespace or nbsp? if so then just use it as is
-    if (isWhiteSpace(c) || isNbsp(c)) {
-      if (acc.previousCharIsSpace || (acc.str === '' && isStartOfContent) || (acc.str.length === content.length - 1 && isEndOfContent)) {
-        return { previousCharIsSpace: false, str: acc.str + Unicode.nbsp };
-      } else {
-        return { previousCharIsSpace: true, str: acc.str + ' ' };
-      }
-    } else {
-      return { previousCharIsSpace: false, str: acc.str + c };
-    }
-  }, { previousCharIsSpace: false, str: '' });
-
-  return result.str;
-};
-
-const normalize = (node: Text, offset: number, count: number) => {
+const normalize = (node: Text, offset: number, count: number): void => {
   if (count === 0) {
     return;
   }
@@ -45,21 +21,21 @@ const normalize = (node: Text, offset: number, count: number) => {
   const isStartOfContent = offset === 0 && Nbsps.needsToBeNbspLeft(root, CaretPosition(node, 0));
 
   // Replace the original whitespace with the normalized whitespace content
-  node.replaceData(offset, count, normalizeContent(whitespace, isStartOfContent, isEndOfContent));
+  node.replaceData(offset, count, Whitespace.normalize(whitespace, 4, isStartOfContent, isEndOfContent));
 };
 
-const normalizeWhitespaceAfter = (node: Text, offset: number) => {
+const normalizeWhitespaceAfter = (node: Text, offset: number): void => {
   const content = node.data.slice(offset);
   const whitespaceCount = content.length - Strings.lTrim(content).length;
 
-  return normalize(node, offset, whitespaceCount);
+  normalize(node, offset, whitespaceCount);
 };
 
-const normalizeWhitespaceBefore = (node: Text, offset: number) => {
+const normalizeWhitespaceBefore = (node: Text, offset: number): void => {
   const content = node.data.slice(0, offset);
   const whitespaceCount = content.length - Strings.rTrim(content).length;
 
-  return normalize(node, offset - whitespaceCount, whitespaceCount);
+  normalize(node, offset - whitespaceCount, whitespaceCount);
 };
 
 const mergeTextNodes = (prevNode: Text, nextNode: Text, normalizeWhitespace?: boolean, mergeToPrev: boolean = true): Text => {

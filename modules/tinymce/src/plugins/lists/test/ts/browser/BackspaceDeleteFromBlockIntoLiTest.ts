@@ -1,10 +1,9 @@
 import { Keys } from '@ephox/agar';
 import { describe, it } from '@ephox/bedrock-client';
-import { TinyAssertions, TinyContentActions, TinyHooks, TinySelections } from '@ephox/mcagar';
+import { TinyAssertions, TinyContentActions, TinyHooks, TinySelections } from '@ephox/wrap-mcagar';
 
 import Editor from 'tinymce/core/api/Editor';
 import Plugin from 'tinymce/plugins/lists/Plugin';
-import Theme from 'tinymce/themes/silver/Theme';
 
 describe('Browser Test: .RemoveTrailingBlockquoteTest', () => {
   const hook = TinyHooks.bddSetupLight<Editor>({
@@ -12,7 +11,81 @@ describe('Browser Test: .RemoveTrailingBlockquoteTest', () => {
     plugins: 'lists',
     toolbar: '',
     base_url: '/project/tinymce/js/tinymce'
-  }, [ Plugin, Theme ]);
+  }, [ Plugin ]);
+
+  it('TINY-8592: backspace from p outside of table with no change', () => {
+    const editor = hook.editor();
+    const content = '<table>' +
+        '<tbody>' +
+          '<tr>' +
+            '<td>' +
+              '<ul>' +
+                '<li>a</li>' +
+              '</ul>' +
+            '</td>' +
+          '</tr>' +
+        '</tbody>' +
+      '</table>' +
+      '<p>&nbsp;</p>';
+    editor.setContent(content);
+    TinySelections.setCursor(editor, [ 1 ], 0);
+    TinyContentActions.keystroke(editor, Keys.backspace());
+    TinyAssertions.assertCursor(editor, [ 1 ], 0);
+    TinyAssertions.assertContent(editor, content);
+  });
+
+  it('TINY-8592: backspace inside cell', () => {
+    const editor = hook.editor();
+    editor.setContent('<table>' +
+        '<tbody>' +
+          '<tr>' +
+            '<td>' +
+              '<ul>' +
+                '<li>a</li>' +
+              '</ul>' +
+              '<p>&nbsp;</p>' +
+            '</td>' +
+          '</tr>' +
+        '</tbody>' +
+      '</table>');
+    TinySelections.setCursor(editor, [ 0, 0, 0, 0, 1 ], 0);
+    TinyContentActions.keystroke(editor, Keys.backspace());
+    TinyAssertions.assertCursor(editor, [ 0, 0, 0, 0, 0, 0, 0 ], 1);
+    TinyAssertions.assertContent(editor, '<table>' +
+        '<tbody>' +
+          '<tr>' +
+            '<td>' +
+              '<ul>' +
+                '<li>a</li>' +
+              '</ul>' +
+            '</td>' +
+          '</tr>' +
+        '</tbody>' +
+      '</table>');
+  });
+
+  it('TINY-8592: backspace inside different cells', () => {
+    const editor = hook.editor();
+    const content = '<table>' +
+        '<tbody>' +
+          '<tr>' +
+            '<td>' +
+              '<ul>' +
+                '<li>a</li>' +
+              '</ul>' +
+            '</td>' +
+            '<td>' +
+              '&nbsp;' +
+            '</td>' +
+          '</tr>' +
+        '</tbody>' +
+      '</table>';
+    editor.setContent(content);
+    TinySelections.setCursor(editor, [ 0, 0, 0, 1, 0 ], 0);
+    TinyContentActions.keystroke(editor, Keys.backspace());
+    TinyAssertions.assertCursor(editor, [ 0, 0, 0, 1 ], 0);
+    TinyAssertions.assertContent(editor, content);
+  });
 
   it('TBA: backspace from p inside div into li', () => {
     const editor = hook.editor();

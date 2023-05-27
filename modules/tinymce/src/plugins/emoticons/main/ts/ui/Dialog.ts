@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Arr, Cell, Optional, Throttler } from '@ephox/katamari';
 
 import Editor from 'tinymce/core/api/Editor';
@@ -14,18 +7,23 @@ import { insertEmoticon } from '../core/Actions';
 import { ALL_CATEGORY, EmojiDatabase } from '../core/EmojiDatabase';
 import { emojisFrom } from '../core/Lookup';
 
+interface DialogData {
+  readonly pattern: string;
+  readonly results: Array<{ value: string; icon: string; text: string }>;
+}
+
 const patternName = 'pattern';
 
-const open = (editor: Editor, database: EmojiDatabase) => {
+const open = (editor: Editor, database: EmojiDatabase): void => {
 
-  const initialState = {
+  const initialState: DialogData = {
     pattern: '',
     results: emojisFrom(database.listAll(), '', Optional.some(300))
   };
 
   const currentTab = Cell(ALL_CATEGORY);
 
-  const scan = (dialogApi) => {
+  const scan = (dialogApi: Dialog.DialogInstanceApi<DialogData>) => {
     const dialogData = dialogApi.getData();
     const category = currentTab.get();
     const candidates = database.listCategory(category);
@@ -52,7 +50,7 @@ const open = (editor: Editor, database: EmojiDatabase) => {
     // columns: 'auto'
   };
 
-  const getInitialState = (): Dialog.DialogSpec<typeof initialState> => {
+  const getInitialState = (): Dialog.DialogSpec<DialogData> => {
     const body: Dialog.TabPanelSpec = {
       type: 'tabpanel',
       // All tabs have the same fields.
@@ -63,7 +61,7 @@ const open = (editor: Editor, database: EmojiDatabase) => {
       }))
     };
     return {
-      title: 'Emoticons',
+      title: 'Emojis',
       size: 'normal',
       body,
       initialData: initialState,
@@ -93,7 +91,7 @@ const open = (editor: Editor, database: EmojiDatabase) => {
   dialogApi.focus(patternName);
 
   if (!database.hasLoaded()) {
-    dialogApi.block('Loading emoticons...');
+    dialogApi.block('Loading emojis...');
     database.waitForLoad().then(() => {
       dialogApi.redial(getInitialState());
       updateFilter.throttle(dialogApi);
@@ -101,7 +99,7 @@ const open = (editor: Editor, database: EmojiDatabase) => {
       dialogApi.unblock();
     }).catch((_err) => {
       dialogApi.redial({
-        title: 'Emoticons',
+        title: 'Emojis',
         body: {
           type: 'panel',
           items: [
@@ -109,7 +107,7 @@ const open = (editor: Editor, database: EmojiDatabase) => {
               type: 'alertbanner',
               level: 'error',
               icon: 'warning',
-              text: '<p>Could not load emoticons</p>'
+              text: 'Could not load emojis'
             }
           ]
         },

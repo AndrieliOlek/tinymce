@@ -1,11 +1,10 @@
 import { UiFinder } from '@ephox/agar';
 import { describe, it } from '@ephox/bedrock-client';
-import { TinyAssertions, TinyHooks } from '@ephox/mcagar';
 import { SugarBody } from '@ephox/sugar';
+import { TinyAssertions, TinyHooks } from '@ephox/wrap-mcagar';
 
 import Editor from 'tinymce/core/api/Editor';
 import Plugin from 'tinymce/plugins/searchreplace/Plugin';
-import Theme from 'tinymce/themes/silver/Theme';
 
 import * as Utils from '../module/test/Utils';
 
@@ -14,7 +13,7 @@ describe('browser.tinymce.plugins.searchreplace.UndoReplaceSpanTest', () => {
     plugins: 'searchreplace',
     toolbar: 'searchreplace',
     base_url: '/project/tinymce/js/tinymce',
-  }, [ Theme, Plugin ]);
+  }, [ Plugin ]);
 
   it('TBA: replace one of three found, undo and redo and assert there is no matcher spans in editor', async () => {
     const editor = hook.editor();

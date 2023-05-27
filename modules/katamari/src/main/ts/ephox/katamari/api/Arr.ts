@@ -151,16 +151,16 @@ export const groupBy = <T>(xs: ArrayLike<T>, f: (a: T) => any): T[][] => {
   }
 };
 
-export const foldr = <T, U>(xs: ArrayLike<T>, f: (acc: U, x: T) => U, acc: U): U => {
-  eachr(xs, (x) => {
-    acc = f(acc, x);
+export const foldr = <T, U>(xs: ArrayLike<T>, f: (acc: U, x: T, i: number) => U, acc: U): U => {
+  eachr(xs, (x, i) => {
+    acc = f(acc, x, i);
   });
   return acc;
 };
 
-export const foldl = <T = any, U = any>(xs: ArrayLike<T>, f: (acc: U, x: T) => U, acc: U): U => {
-  each(xs, (x) => {
-    acc = f(acc, x);
+export const foldl = <T = any, U = any>(xs: ArrayLike<T>, f: (acc: U, x: T, i: number) => U, acc: U): U => {
+  each(xs, (x, i) => {
+    acc = f(acc, x, i);
   });
   return acc;
 };
@@ -238,11 +238,14 @@ export const reverse = <T>(xs: ArrayLike<T>): T[] => {
 
 export const difference = <T>(a1: ArrayLike<T>, a2: ArrayLike<T>): T[] => filter(a1, (x) => !contains(a2, x));
 
-export const mapToObject = <T extends keyof any, U>(xs: ArrayLike<T>, f: (x: T, i: number) => U): Record<T, U> => {
-  const r = {} as Record<T, U>;
+export const mapToObject: {
+  <T extends string, U>(xs: ArrayLike<T>, f: (x: T, i: number) => U): Record<T, U>;
+  <T, R extends Record<string, any>>(xs: ArrayLike<T>, f: (x: T, i: number) => R[keyof R]): R;
+} = <T, R extends Record<string, any>>(xs: ArrayLike<T>, f: (x: T, i: number) => R[keyof R]): R => {
+  const r = {} as R;
   for (let i = 0, len = xs.length; i < len; i++) {
     const x = xs[i];
-    r[String(x)] = f(x, i);
+    r[String(x) as keyof R] = f(x, i);
   }
   return r;
 };
@@ -271,4 +274,21 @@ export const findMap = <A, B>(arr: ArrayLike<A>, f: (a: A, index: number) => Opt
     }
   }
   return Optional.none<B>();
+};
+
+export const unique = <T>(xs: ArrayLike<T>, comparator?: (a: T, b: T) => boolean): T[] => {
+  const r: T[] = [];
+
+  const isDuplicated = Type.isFunction(comparator) ?
+    (x: T) => exists(r, (i) => comparator(i, x)) :
+    (x: T) => contains(r, x);
+
+  for (let i = 0, len = xs.length; i < len; i++) {
+    const x = xs[i];
+    if (!isDuplicated(x)) {
+      r.push(x);
+    }
+  }
+
+  return r;
 };

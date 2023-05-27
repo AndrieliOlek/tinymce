@@ -1,24 +1,19 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Arr } from '@ephox/katamari';
 
 import Editor from 'tinymce/core/api/Editor';
 import Tools from 'tinymce/core/api/util/Tools';
 
-import * as Settings from '../api/Settings';
+import * as Options from '../api/Options';
 
 const isArray = Tools.isArray;
 
 export const UserDefined = 'User Defined';
 
+export type Char = [ number, string ];
+
 export interface CharMap {
-  name: string;
-  characters: [number, string][];
+  readonly name: string;
+  characters: Char[];
 }
 
 const getDefaultCharMap = (): CharMap[] => {
@@ -367,38 +362,38 @@ const getDefaultCharMap = (): CharMap[] => {
   ];
 };
 
-const charmapFilter = (charmap) => {
+const charmapFilter = (charmap: Char[]): Char[] => {
   return Tools.grep(charmap, (item) => {
     return isArray(item) && item.length === 2;
   });
 };
 
-const getCharsFromSetting = (settingValue) => {
-  if (isArray(settingValue)) {
-    return [].concat(charmapFilter(settingValue));
+const getCharsFromOption = (optionValue: Char[] | (() => Char[]) | undefined): Char[] => {
+  if (isArray(optionValue)) {
+    return charmapFilter(optionValue);
   }
 
-  if (typeof settingValue === 'function') {
-    return settingValue();
+  if (typeof optionValue === 'function') {
+    return optionValue();
   }
 
   return [];
 };
 
-const extendCharMap = (editor: Editor, charmap: CharMap[]) => {
-  const userCharMap = Settings.getCharMap(editor);
+const extendCharMap = (editor: Editor, charmap: CharMap[]): CharMap[] => {
+  const userCharMap = Options.getCharMap(editor);
   if (userCharMap) {
-    charmap = [{ name: UserDefined, characters: getCharsFromSetting(userCharMap) }];
+    charmap = [{ name: UserDefined, characters: getCharsFromOption(userCharMap) }];
   }
 
-  const userCharMapAppend = Settings.getCharMapAppend(editor);
+  const userCharMapAppend = Options.getCharMapAppend(editor);
   if (userCharMapAppend) {
     const userDefinedGroup = Tools.grep(charmap, (cg) => cg.name === UserDefined);
     if (userDefinedGroup.length) {
-      userDefinedGroup[0].characters = [].concat(userDefinedGroup[0].characters).concat(getCharsFromSetting(userCharMapAppend));
+      userDefinedGroup[0].characters = [ ...userDefinedGroup[0].characters, ...getCharsFromOption(userCharMapAppend) ];
       return charmap;
     }
-    return [].concat(charmap).concat({ name: UserDefined, characters: getCharsFromSetting(userCharMapAppend) });
+    return charmap.concat({ name: UserDefined, characters: getCharsFromOption(userCharMapAppend) });
   }
 
   return charmap;

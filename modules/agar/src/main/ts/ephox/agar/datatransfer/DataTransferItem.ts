@@ -1,4 +1,4 @@
-import { Fun, Id, Optional } from '@ephox/katamari';
+import { Fun, Id, Optional, Type } from '@ephox/katamari';
 
 import { isInProtectedMode } from './Mode';
 
@@ -28,7 +28,7 @@ const createDataTransferItemFromFile = (dataTransfer: DataTransfer, file: File):
     },
 
     // Not supported on all browsers but needed since the TS dom lib type has it
-    webkitGetAsEntry: Fun.noop
+    webkitGetAsEntry: Fun.constant(null)
   };
 
   return transferItem;
@@ -39,14 +39,14 @@ const createDataTransferItemFromString = (dataTransfer: DataTransfer, type: stri
     kind: 'string',
     type,
     getAsString: (callback) => {
-      if (isInProtectedMode(dataTransfer) === false) {
+      if (!isInProtectedMode(dataTransfer) && !Type.isNull(callback)) {
         callback(data);
       }
     },
     getAsFile: Fun.constant(null),
 
     // Not supported on all browsers but needed since the TS dom lib type has it
-    webkitGetAsEntry: Fun.noop
+    webkitGetAsEntry: Fun.constant(null)
   };
 
   setData(transferItem, data);

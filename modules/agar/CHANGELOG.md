@@ -6,6 +6,43 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 
+## 7.4.0 - 2023-03-15
+
+### Added
+- Added `measurement` API to StrAssert to allow for approximate measurements in strings. #TINY-9242
+
+## 7.3.0 - 2022-11-23
+
+### Added
+- Added `TestStore` API, which was moved from Alloy and requires types. #TINY-9157
+- Added `exactAttrs`, `exactClasses` and `exactStyles` to `ApproxStructures.element`. #TINY-9102
+
+## 7.2.0 - 2022-09-08
+
+### Improved
+- Exposed the `ArrayAssert` and `StringAssert` types.
+- Exposed the `KeyPressAdt` type. #TINY-8952
+
+## 7.1.0 - 2022-06-29
+
+### Added
+- Added `detail` property to emulated mouse events settings.
+- Added `pClick` to the `RealMouse` API.
+
+## 7.0.0 - 2022-03-03
+
+### Changed
+- The `sizzle` library is now used directly instead of using the `@ephox/wrap-sizzle` wrapper library.
+- Replaced `jsverify` with `fast-check` for the `Arbitraries` module.
+- Upgraded to Katamari 9.0, which includes breaking changes to the `Optional` API used in this module.
+
+### Removed
+- Removed usage of polyfill promises in favor of native promises.
+- Removed the `PhantomSkipper` module.
+- Removed support for Microsoft Internet Explorer and legacy Microsoft Edge.
+
+## 6.0.0 - 2021-08-26
+
 ### Added
 - Added new `pasteDataTransfer`, `pasteItems`, `pasteFiles`, `cut` and `copy` helpers to the `Clipboard` module.
 
@@ -15,6 +52,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Fixed
 - The `DataTransfer.clearData` API threw an exception when no format was provided.
 - The `Keyboard` module generated fake keys was missing the `charCode` property for `keypress` events.
+
+## 5.4.0 - 2021-07-19
+
+### Improved
+- `UiControls.setValue` now takes an optional `eventName` to fire after changing the value.
 
 ## 5.3.0 - 2021-05-06
 

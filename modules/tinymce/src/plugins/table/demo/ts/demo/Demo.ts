@@ -1,9 +1,12 @@
-declare let tinymce: any;
+import { TinyMCE } from 'tinymce/core/api/PublicApi';
+
+declare let tinymce: TinyMCE;
 
 tinymce.init({
   selector: 'div.tinymce',
   plugins: 'table',
-  toolbar: 'table tableprops tablecellprops tablerowprops | tabledelete | tableinsertrowbefore tableinsertrowafter tabledeleterow | tableinsertcolbefore tableinsertcolafter tabledeletecol | tablecutrow tablecopyrow tablepasterowbefore tablepasterowafter',
+  toolbar: 'table tableprops tablecellprops tablerowprops | tabledelete | tableinsertrowbefore tableinsertrowafter tabledeleterow | tableinsertcolbefore tableinsertcolafter tabledeletecol | tablecutrow tablecopyrow tablepasterowbefore tablepasterowafter |' +
+  ' tableclass tablecellclass | tablecellvalign | tablecellborderwidth tablecellborderstyle | tablecaption | tablecellbackgroundcolor tablecellbordercolor | tablerowheader tablecolheader',
   media_dimensions: false,
   table_class_list: [
     { title: 'None', value: '' },
@@ -20,7 +23,7 @@ tinymce.init({
     { title: 'Bird', value: 'bird' },
     { title: 'Snake', value: 'snake' }
   ],
-  table_style_by_css: true,
+  // table_style_by_css: false,
   // table grid TBD
   table_grid: true,
   // table_column_resizing: 'preservetable',

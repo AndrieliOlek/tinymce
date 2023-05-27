@@ -1,10 +1,9 @@
 import { ApproxStructure, Assertions } from '@ephox/agar';
 import { after, before, describe, it } from '@ephox/bedrock-client';
-import { TinyHooks } from '@ephox/mcagar';
 import { Insert, Remove, SugarBody, SugarElement } from '@ephox/sugar';
+import { TinyHooks } from '@ephox/wrap-mcagar';
 
 import Editor from 'tinymce/core/api/Editor';
-import Theme from 'tinymce/themes/silver/Theme';
 
 import * as UiUtils from '../../module/UiUtils';
 
@@ -25,7 +24,7 @@ describe('browser.tinymce.themes.silver.editor.SilverFixedToolbarContainerTest',
     menubar: 'file',
     toolbar: 'undo bold',
     base_url: '/project/tinymce/js/tinymce'
-  }, [ Theme ]);
+  }, []);
 
   it('Check basic structure', async () => {
     const editor = hook.editor();

@@ -1,4 +1,4 @@
-import { ApproxStructure, Assertions, GeneralSteps, PhantomSkipper, Step, StructAssert } from '@ephox/agar';
+import { ApproxStructure, Assertions, GeneralSteps, Step, StructAssert } from '@ephox/agar';
 import { UnitTest } from '@ephox/bedrock-client';
 import { Arr, Result } from '@ephox/katamari';
 import { Css } from '@ephox/sugar';
@@ -12,11 +12,6 @@ import * as Sinks from 'ephox/alloy/test/Sinks';
 import * as TestPartialToolbarGroup from 'ephox/alloy/test/toolbar/TestPartialToolbarGroup';
 
 UnitTest.asynctest('SplitFloatingToolbarTest', (success, failure) => {
-  // Tests requiring 'flex' do not currently work on phantom. Use the remote to see how it is
-  // viewed as an invalid value.
-  if (PhantomSkipper.detect()) {
-    return success();
-  }
 
   const sinkComp = Sinks.relativeSink();
 
@@ -28,7 +23,7 @@ UnitTest.asynctest('SplitFloatingToolbarTest', (success, failure) => {
     }
   }));
 
-  GuiSetup.setup((_store, _doc, _body) => {
+  GuiSetup.setup((store, _doc, _body) => {
     const pPrimary = SplitFloatingToolbar.parts.primary({
       dom: {
         tag: 'div',
@@ -75,10 +70,12 @@ UnitTest.asynctest('SplitFloatingToolbarTest', (success, failure) => {
               classes: [ 'test-toolbar-overflow' ]
             }
           }
-        }
+        },
+        onOpened: store.adder('onOpened'),
+        onClosed: store.adder('onClosed')
       })
     );
-  }, (doc, _body, gui, component, _store) => {
+  }, (doc, _body, gui, component, store) => {
     gui.add(sinkComp);
     gui.add(GuiFactory.build(anchorButtonMem.asSpec()));
 
@@ -145,7 +142,7 @@ UnitTest.asynctest('SplitFloatingToolbarTest', (success, failure) => {
           children: [
             s.element('div', {
               attrs: {
-                id: str.contains('aria-owns')
+                id: str.contains('aria-controls')
               },
               children: [
                 s.element('div', {
@@ -178,6 +175,7 @@ UnitTest.asynctest('SplitFloatingToolbarTest', (success, failure) => {
         '.test-split-toolbar button.more-button { width: 50px; }'
       ]),
 
+      store.sAssertEq('Assert initial store state', [ ]),
       sAssertSplitFloatingToolbarToggleState(false),
 
       Step.sync(() => {
@@ -190,6 +188,7 @@ UnitTest.asynctest('SplitFloatingToolbarTest', (success, failure) => {
         SplitFloatingToolbar.toggle(component);
       }),
 
+      store.sAssertEq('Assert store contains toggled state', [ 'onOpened' ]),
       sAssertSplitFloatingToolbarToggleState(true),
 
       sAssertGroups('width=400px (1 +)', [ group1, oGroup ], [ group2, group3 ]),
@@ -216,10 +215,13 @@ UnitTest.asynctest('SplitFloatingToolbarTest', (success, failure) => {
       sResetWidth('400px'),
       sAssertGroups('width=400px (1 +)', [ group1, oGroup ], [ group2, group3 ]),
 
+      store.sClear,
       sToggleSplitFloatingToolbar(),
+      store.sAssertEq('Assert store contains toggled state', [ 'onClosed' ]),
       sAssertSplitFloatingToolbarToggleState(false),
 
       sToggleSplitFloatingToolbar(),
+      store.sAssertEq('Assert store contains toggled state', [ 'onClosed', 'onOpened' ]),
       sAssertSplitFloatingToolbarToggleState(true),
 
       GuiSetup.mRemoveStyles

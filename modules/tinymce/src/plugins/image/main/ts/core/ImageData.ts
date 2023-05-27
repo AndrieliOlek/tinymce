@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Type } from '@ephox/katamari';
 import { Attribute, SugarElement } from '@ephox/sugar';
 
@@ -15,22 +8,23 @@ import * as Utils from './Utils';
 const DOM = DOMUtils.DOM;
 
 interface ImageData {
-  src: string;
-  alt: string | null;
-  title: string;
-  width: string;
-  height: string;
-  class: string;
-  style: string;
-  caption: boolean;
-  hspace: string;
-  vspace: string;
-  border: string;
-  borderStyle: string;
-  isDecorative: boolean;
+  readonly src: string;
+  readonly alt: string | null;
+  readonly title: string;
+  readonly width: string;
+  readonly height: string;
+  readonly class: string;
+  readonly style: string;
+  readonly caption: boolean;
+  readonly hspace: string;
+  readonly vspace: string;
+  readonly border: string;
+  readonly borderStyle: string;
+  readonly isDecorative: boolean;
 }
 
-type CssNormalizer = (css: string) => string;
+type CssNormalizer = (css: string | undefined) => string;
+type UpdateImageProp = <T extends string>(image: HTMLElement, name: T, value: string) => void;
 
 const getHspace = (image: HTMLElement): string => {
   if (image.style.marginLeft && image.style.marginRight && image.style.marginLeft === image.style.marginRight) {
@@ -58,25 +52,24 @@ const getBorder = (image: HTMLElement): string => {
 
 const getAttrib = (image: HTMLElement, name: string): string => {
   if (image.hasAttribute(name)) {
-    return image.getAttribute(name);
+    return image.getAttribute(name) ?? '';
   } else {
     return '';
   }
 };
 
-const getStyle = (image: HTMLElement, name: string): string => image.style[name] ? image.style[name] : '';
+const hasCaption = (image: HTMLElement): boolean =>
+  image.parentNode !== null && image.parentNode.nodeName === 'FIGURE';
 
-const hasCaption = (image: HTMLElement): boolean => image.parentNode !== null && image.parentNode.nodeName === 'FIGURE';
-
-const updateAttrib = (image: HTMLElement, name: string, value: string) => {
-  if (value === '') {
+const updateAttrib = (image: HTMLElement, name: string, value: string | null): void => {
+  if (value === '' || value === null) {
     image.removeAttribute(name);
   } else {
     image.setAttribute(name, value);
   }
 };
 
-const wrapInFigure = (image: HTMLElement) => {
+const wrapInFigure = (image: HTMLElement): void => {
   const figureElm = DOM.create('figure', { class: 'image' });
   DOM.insertAfter(figureElm, image);
 
@@ -85,13 +78,15 @@ const wrapInFigure = (image: HTMLElement) => {
   figureElm.contentEditable = 'false';
 };
 
-const removeFigure = (image: HTMLElement) => {
+const removeFigure = (image: HTMLElement): void => {
   const figureElm = image.parentNode;
-  DOM.insertAfter(image, figureElm);
-  DOM.remove(figureElm);
+  if (Type.isNonNullable(figureElm)) {
+    DOM.insertAfter(image, figureElm);
+    DOM.remove(figureElm);
+  }
 };
 
-const toggleCaption = (image: HTMLElement) => {
+const toggleCaption = (image: HTMLElement): void => {
   if (hasCaption(image)) {
     removeFigure(image);
   } else {
@@ -99,7 +94,7 @@ const toggleCaption = (image: HTMLElement) => {
   }
 };
 
-const normalizeStyle = (image: HTMLElement, normalizeCss: CssNormalizer) => {
+const normalizeStyle = (image: HTMLElement, normalizeCss: CssNormalizer): void => {
   const attrValue = image.getAttribute('style');
   const value = normalizeCss(attrValue !== null ? attrValue : '');
 
@@ -111,16 +106,17 @@ const normalizeStyle = (image: HTMLElement, normalizeCss: CssNormalizer) => {
   }
 };
 
-const setSize = (name: string, normalizeCss: CssNormalizer) => (image: HTMLElement, name: string, value: string) => {
-  if (image.style[name]) {
-    image.style[name] = Utils.addPixelSuffix(value);
+const setSize = (name: string, normalizeCss: CssNormalizer) => (image: HTMLElement, name: string, value: string): void => {
+  const styles = image.style as any;
+  if (styles[name]) {
+    styles[name] = Utils.addPixelSuffix(value);
     normalizeStyle(image, normalizeCss);
   } else {
     updateAttrib(image, name, value);
   }
 };
 
-const getSize = (image: HTMLElement, name: string): string => {
+const getSize = (image: HTMLElement, name: 'height' | 'width'): string => {
   if (image.style[name]) {
     return Utils.removePixelSuffix(image.style[name]);
   } else {
@@ -128,35 +124,40 @@ const getSize = (image: HTMLElement, name: string): string => {
   }
 };
 
-const setHspace = (image: HTMLElement, value: string) => {
+const setHspace = (image: HTMLElement, value: string): void => {
   const pxValue = Utils.addPixelSuffix(value);
   image.style.marginLeft = pxValue;
   image.style.marginRight = pxValue;
 };
 
-const setVspace = (image: HTMLElement, value: string) => {
+const setVspace = (image: HTMLElement, value: string): void => {
   const pxValue = Utils.addPixelSuffix(value);
   image.style.marginTop = pxValue;
   image.style.marginBottom = pxValue;
 };
 
-const setBorder = (image: HTMLElement, value: string) => {
+const setBorder = (image: HTMLElement, value: string): void => {
   const pxValue = Utils.addPixelSuffix(value);
   image.style.borderWidth = pxValue;
 };
 
-const setBorderStyle = (image: HTMLElement, value: string) => {
+const setBorderStyle = (image: HTMLElement, value: string): void => {
   image.style.borderStyle = value;
 };
 
-const getBorderStyle = (image: HTMLElement) => getStyle(image, 'borderStyle');
+const getBorderStyle = (image: HTMLElement): string =>
+  image.style.borderStyle ?? '';
 
-const isFigure = (elm: Node) => elm.nodeName === 'FIGURE';
-const isImage = (elm: Node) => elm.nodeName === 'IMG';
+const isFigure = (elm: Node | null): elm is HTMLElement =>
+  Type.isNonNullable(elm) && elm.nodeName === 'FIGURE';
 
-const getIsDecorative = (image: HTMLElement) => DOM.getAttrib(image, 'alt').length === 0 && DOM.getAttrib(image, 'role') === 'presentation';
+const isImage = (elm: Node): elm is HTMLImageElement =>
+  elm.nodeName === 'IMG';
 
-const getAlt = (image: HTMLElement) => {
+const getIsDecorative = (image: HTMLElement): boolean =>
+  DOM.getAttrib(image, 'alt').length === 0 && DOM.getAttrib(image, 'role') === 'presentation';
+
+const getAlt = (image: HTMLElement): string => {
   if (getIsDecorative(image)) {
     return '';
   } else {
@@ -201,7 +202,7 @@ const getStyleValue = (normalizeCss: CssNormalizer, data: ImageData): string => 
     setBorderStyle(image, data.borderStyle);
   }
 
-  return normalizeCss(image.getAttribute('style'));
+  return normalizeCss(image.getAttribute('style') ?? '');
 };
 
 const create = (normalizeCss: CssNormalizer, data: ImageData): HTMLElement => {
@@ -235,17 +236,17 @@ const read = (normalizeCss: CssNormalizer, image: HTMLElement): ImageData => ({
   hspace: getHspace(image),
   vspace: getVspace(image),
   border: getBorder(image),
-  borderStyle: getStyle(image, 'borderStyle'),
+  borderStyle: getBorderStyle(image),
   isDecorative: getIsDecorative(image)
 });
 
-const updateProp = (image: HTMLElement, oldData: ImageData, newData: ImageData, name: string, set: (image: HTMLElement, name: string, value: string) => void) => {
+const updateProp = (image: HTMLElement, oldData: ImageData, newData: ImageData, name: keyof Omit<ImageData, 'alt'>, set: UpdateImageProp): void => {
   if (newData[name] !== oldData[name]) {
-    set(image, name, newData[name]);
+    set(image, name, String(newData[name]));
   }
 };
 
-const setAlt = (image: HTMLElement, alt: string, isDecorative: boolean) => {
+const setAlt = (image: HTMLElement, alt: string | null, isDecorative: boolean): void => {
   if (isDecorative) {
     DOM.setAttrib(image, 'role', 'presentation');
     // unfortunately can't set "" attr value with domutils
@@ -266,18 +267,19 @@ const setAlt = (image: HTMLElement, alt: string, isDecorative: boolean) => {
   }
 };
 
-const updateAlt = (image: HTMLElement, oldData: ImageData, newData: ImageData) => {
+const updateAlt = (image: HTMLElement, oldData: ImageData, newData: ImageData): void => {
   if (newData.alt !== oldData.alt || newData.isDecorative !== oldData.isDecorative) {
     setAlt(image, newData.alt, newData.isDecorative);
   }
 };
 
-const normalized = (set: (image: HTMLElement, value: string) => void, normalizeCss: CssNormalizer) => (image: HTMLElement, name: string, value: string) => {
-  set(image, value);
-  normalizeStyle(image, normalizeCss);
-};
+const normalized = (set: (image: HTMLElement, value: string) => void, normalizeCss: CssNormalizer) =>
+  (image: HTMLElement, name: string, value: string): void => {
+    set(image, value);
+    normalizeStyle(image, normalizeCss);
+  };
 
-const write = (normalizeCss: CssNormalizer, newData: ImageData, image: HTMLElement) => {
+const write = (normalizeCss: CssNormalizer, newData: ImageData, image: HTMLElement): void => {
   const oldData = read(normalizeCss, image);
 
   updateProp(image, oldData, newData, 'caption', (image, _name, _value) => toggleCaption(image));

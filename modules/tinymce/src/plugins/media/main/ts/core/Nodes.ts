@@ -1,24 +1,16 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
-import { Arr, Obj, Type } from '@ephox/katamari';
+import { Arr, Obj, Strings, Type } from '@ephox/katamari';
 
 import Editor from 'tinymce/core/api/Editor';
 import Env from 'tinymce/core/api/Env';
-import DomParser from 'tinymce/core/api/html/DomParser';
 import AstNode from 'tinymce/core/api/html/Node';
+import HtmlSerializer from 'tinymce/core/api/html/Serializer';
 
-import * as Settings from '../api/Settings';
-import * as Sanitize from './Sanitize';
-import * as VideoScript from './VideoScript';
+import * as Options from '../api/Options';
+import { Parser } from './Parser';
 
 declare let escape: any;
 
-const isLiveEmbedNode = (node: AstNode) => {
+const isLiveEmbedNode = (node: AstNode): boolean => {
   const name = node.name;
   return name === 'iframe' || name === 'video' || name === 'audio';
 };
@@ -34,7 +26,7 @@ const getDimension = (node: AstNode, styles: Record<string, string>, dimension: 
   }
 };
 
-const setDimensions = (node: AstNode, previewNode: AstNode, styles: Record<string, string>) => {
+const setDimensions = (node: AstNode, previewNode: AstNode, styles: Record<string, string>): void => {
   // Apply dimensions for video elements to maintain legacy behaviour
   const useDefaults = previewNode.name === 'img' || node.name === 'video';
 
@@ -49,18 +41,17 @@ const setDimensions = (node: AstNode, previewNode: AstNode, styles: Record<strin
   });
 };
 
-const appendNodeContent = (editor: Editor, nodeName: string, previewNode: AstNode, html: string) => {
-  const newNode = DomParser({ forced_root_block: false, validate: false }, editor.schema).parse(html, { context: nodeName });
+const appendNodeContent = (editor: Editor, nodeName: string, previewNode: AstNode, html: string): void => {
+  const newNode = Parser(editor.schema).parse(html, { context: nodeName });
   while (newNode.firstChild) {
     previewNode.append(newNode.firstChild);
   }
 };
 
-const createPlaceholderNode = (editor: Editor, node: AstNode) => {
+const createPlaceholderNode = (editor: Editor, node: AstNode): AstNode => {
   const name = node.name;
 
   const placeHolder = new AstNode('img', 1);
-  placeHolder.shortEnded = true;
 
   retainAttributesAndInnerHtml(editor, node, placeHolder);
 
@@ -75,7 +66,7 @@ const createPlaceholderNode = (editor: Editor, node: AstNode) => {
   return placeHolder;
 };
 
-const createPreviewNode = (editor: Editor, node: AstNode) => {
+const createPreviewNode = (editor: Editor, node: AstNode): AstNode => {
   const name = node.name;
 
   const previewWrapper = new AstNode('span', 1);
@@ -88,7 +79,7 @@ const createPreviewNode = (editor: Editor, node: AstNode) => {
 
   retainAttributesAndInnerHtml(editor, node, previewWrapper);
 
-  const styles = editor.dom.parseStyle(node.attr('style'));
+  const styles = editor.dom.parseStyle(node.attr('style') ?? '');
   const previewNode = new AstNode(name, 1);
   setDimensions(node, previewNode, styles);
   previewNode.attr({
@@ -112,7 +103,7 @@ const createPreviewNode = (editor: Editor, node: AstNode) => {
     // Recreate the child nodes using the sanitized inner HTML
     const sanitizedHtml = previewWrapper.attr('data-mce-html');
     if (Type.isNonNullable(sanitizedHtml)) {
-      appendNodeContent(editor, name, previewNode, sanitizedHtml);
+      appendNodeContent(editor, name, previewNode, unescape(sanitizedHtml));
     }
   }
 
@@ -125,16 +116,16 @@ const createPreviewNode = (editor: Editor, node: AstNode) => {
   return previewWrapper;
 };
 
-const retainAttributesAndInnerHtml = (editor: Editor, sourceNode: AstNode, targetNode: AstNode) => {
-  // Prefix all attributes except width, height and style since we
+const retainAttributesAndInnerHtml = (editor: Editor, sourceNode: AstNode, targetNode: AstNode): void => {
+  // Prefix all attributes except internal (data-mce-*), width, height and style since we
   // will add these to the placeholder
-  const attribs = sourceNode.attributes;
+  const attribs = sourceNode.attributes ?? [];
   let ai = attribs.length;
   while (ai--) {
     const attrName = attribs[ai].name;
     let attrValue = attribs[ai].value;
 
-    if (attrName !== 'width' && attrName !== 'height' && attrName !== 'style') {
+    if (attrName !== 'width' && attrName !== 'height' && attrName !== 'style' && !Strings.startsWith(attrName, 'data-mce-')) {
       if (attrName === 'data' || attrName === 'src') {
         attrValue = editor.convertURL(attrValue, attrName);
       }
@@ -145,21 +136,25 @@ const retainAttributesAndInnerHtml = (editor: Editor, sourceNode: AstNode, targe
 
   // Place the inner HTML contents inside an escaped attribute
   // This enables us to copy/paste the fake object
-  const innerHtml = sourceNode.firstChild && sourceNode.firstChild.value;
+  const serializer = HtmlSerializer({ inner: true }, editor.schema);
+  const tempNode = new AstNode('div', 1);
+  Arr.each(sourceNode.children(), (child) => tempNode.append(child));
+  const innerHtml = serializer.serialize(tempNode);
   if (innerHtml) {
-    targetNode.attr('data-mce-html', escape(Sanitize.sanitize(editor, innerHtml)));
-    targetNode.firstChild = null;
+    targetNode.attr('data-mce-html', escape(innerHtml));
+    targetNode.empty();
   }
 };
 
-const isPageEmbedWrapper = (node: AstNode) => {
+const isPageEmbedWrapper = (node: AstNode): boolean => {
   const nodeClass = node.attr('class');
-  return nodeClass && /\btiny-pageembed\b/.test(nodeClass);
+  return Type.isString(nodeClass) && /\btiny-pageembed\b/.test(nodeClass);
 };
 
-const isWithinEmbedWrapper = (node: AstNode) => {
-  while ((node = node.parent)) {
-    if (node.attr('data-ephox-embed-iri') || isPageEmbedWrapper(node)) {
+const isWithinEmbedWrapper = (node: AstNode): boolean => {
+  let tempNode: AstNode | null | undefined = node;
+  while ((tempNode = tempNode.parent)) {
+    if (tempNode.attr('data-ephox-embed-iri') || isPageEmbedWrapper(tempNode)) {
       return true;
     }
   }
@@ -167,50 +162,30 @@ const isWithinEmbedWrapper = (node: AstNode) => {
   return false;
 };
 
-const placeHolderConverter = (editor: Editor) => {
-  return (nodes) => {
-    let i = nodes.length;
-    let node;
-    let videoScript;
+const placeHolderConverter = (editor: Editor) => (nodes: AstNode[]): void => {
+  let i = nodes.length;
+  let node: AstNode;
 
-    while (i--) {
-      node = nodes[i];
-      if (!node.parent) {
-        continue;
+  while (i--) {
+    node = nodes[i];
+    if (!node.parent) {
+      continue;
+    }
+
+    if (node.parent.attr('data-mce-object')) {
+      continue;
+    }
+
+    if (isLiveEmbedNode(node) && Options.hasLiveEmbeds(editor)) {
+      if (!isWithinEmbedWrapper(node)) {
+        node.replace(createPreviewNode(editor, node));
       }
-
-      if (node.parent.attr('data-mce-object')) {
-        continue;
-      }
-
-      if (node.name === 'script') {
-        videoScript = VideoScript.getVideoScriptMatch(Settings.getScripts(editor), node.attr('src'));
-        if (!videoScript) {
-          continue;
-        }
-      }
-
-      if (videoScript) {
-        if (videoScript.width) {
-          node.attr('width', videoScript.width.toString());
-        }
-
-        if (videoScript.height) {
-          node.attr('height', videoScript.height.toString());
-        }
-      }
-
-      if (isLiveEmbedNode(node) && Settings.hasLiveEmbeds(editor) && Env.ceFalse) {
-        if (!isWithinEmbedWrapper(node)) {
-          node.replace(createPreviewNode(editor, node));
-        }
-      } else {
-        if (!isWithinEmbedWrapper(node)) {
-          node.replace(createPlaceholderNode(editor, node));
-        }
+    } else {
+      if (!isWithinEmbedWrapper(node)) {
+        node.replace(createPlaceholderNode(editor, node));
       }
     }
-  };
+  }
 };
 
 export {

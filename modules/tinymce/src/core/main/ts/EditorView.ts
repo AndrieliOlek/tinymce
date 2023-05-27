@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Fun, Optional } from '@ephox/katamari';
 import { Css, SugarBody, SugarElement, Traverse } from '@ephox/sugar';
 
@@ -23,7 +16,7 @@ const getClientHeight = Fun.curry(getProp, 'clientHeight' as 'clientHeight');
 const getMarginTop = Fun.curry(getComputedSizeProp, 'margin-top');
 const getMarginLeft = Fun.curry(getComputedSizeProp, 'margin-left');
 
-const getBoundingClientRect = (elm: SugarElement<Element>): ClientRect =>
+const getBoundingClientRect = (elm: SugarElement<Element>): DOMRect =>
   elm.dom.getBoundingClientRect();
 
 const isInsideElementContentArea = (bodyElm: SugarElement<Element>, clientX: number, clientY: number): boolean => {

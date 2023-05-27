@@ -1,11 +1,10 @@
 import { Keys, Waiter } from '@ephox/agar';
 import { describe, it } from '@ephox/bedrock-client';
 import { Arr } from '@ephox/katamari';
-import { TinyHooks, TinySelections, TinyUiActions } from '@ephox/mcagar';
+import { TinyHooks, TinySelections, TinyUiActions } from '@ephox/wrap-mcagar';
 
 import Editor from 'tinymce/core/api/Editor';
 import Plugin from 'tinymce/plugins/table/Plugin';
-import Theme from 'tinymce/themes/silver/Theme';
 
 interface ButtonDetails {
   readonly name: string;
@@ -70,7 +69,7 @@ describe('browser.tinymce.plugins.table.LockedColumnDisabledButtonsTest', () => 
     plugins: 'table',
     toolbar,
     base_url: '/project/tinymce/js/tinymce'
-  }, [ Plugin, Theme ], true);
+  }, [ Plugin ], true);
 
   const table = (lockedColumns: number[] = [ 0 ]) =>
     `<table data-snooker-locked-cols="${lockedColumns.join(',')}">` +

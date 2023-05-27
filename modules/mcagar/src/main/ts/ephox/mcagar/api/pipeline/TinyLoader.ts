@@ -2,7 +2,6 @@ import { TestLogs } from '@ephox/agar';
 import { Optional } from '@ephox/katamari';
 import { Insert, Remove, SugarBody, SugarElement, SugarShadowDom } from '@ephox/sugar';
 
-import 'tinymce';
 import * as Loader from '../../loader/Loader';
 import { setupTinymceBaseUrl } from '../../loader/Urls';
 
@@ -34,7 +33,13 @@ const setup = (callback: Loader.RunCallback, settings: Record<string, any>, succ
   }, settings, Optional.none());
 };
 
-const setupFromElement = (callback: Loader.RunCallback, settings: Record<string, any>, element: SugarElement, success: Loader.SuccessCallback, failure: Loader.FailureCallback): void => {
+const setupFromElement = (
+  callback: Loader.RunCallback,
+  settings: Record<string, any>,
+  element: SugarElement<Element>,
+  success: Loader.SuccessCallback,
+  failure: Loader.FailureCallback
+): void => {
   Loader.setup({
     preInit: setupTinymceBaseUrl,
     run: callback,
@@ -43,7 +48,12 @@ const setupFromElement = (callback: Loader.RunCallback, settings: Record<string,
   }, settings, Optional.some(element));
 };
 
-const setupInShadowRoot = (callback: (editor: any, shadowRoot: SugarElement<ShadowRoot>, success: SuccessCallback, failure: FailureCallback) => void, settings: Record<string, any>, success: Loader.SuccessCallback, failure: Loader.FailureCallback): void => {
+const setupInShadowRoot = (
+  callback: (editor: any, shadowRoot: SugarElement<ShadowRoot>, success: SuccessCallback, failure: FailureCallback) => void,
+  settings: Record<string, any>,
+  success: Loader.SuccessCallback,
+  failure: Loader.FailureCallback
+): void => {
   if (!SugarShadowDom.isSupported()) {
     return success();
   }

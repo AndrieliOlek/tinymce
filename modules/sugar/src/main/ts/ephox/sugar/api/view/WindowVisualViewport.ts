@@ -1,4 +1,5 @@
 import { Fun, Optional } from '@ephox/katamari';
+import { PlatformDetection } from '@ephox/sand';
 
 import { fromRawEvent } from '../../impl/FilteredEvent';
 import { EventHandler, EventUnbinder } from '../events/Types';
@@ -14,25 +15,14 @@ export interface Bounds {
   readonly bottom: number;
 }
 
-// Experimental support for visual viewport
-// TODO: Remove this once using the TS dom library
-interface WindowVisualViewport {
-  readonly offsetLeft: number;
-  readonly offsetTop: number;
-  readonly pageLeft: number;
-  readonly pageTop: number;
-  readonly width: number;
-  readonly height: number;
-  readonly scale: number;
-  readonly addEventListener: (event: string, handler: EventListenerOrEventListenerObject) => void;
-  readonly removeEventListener: (event: string, handler: EventListenerOrEventListenerObject) => void;
-  readonly dispatchEvent: (evt: Event) => boolean;
-}
-
-const get = (_win?: Window): Optional<WindowVisualViewport> => {
+const get = (_win?: Window): Optional<VisualViewport> => {
   const win = _win === undefined ? window : _win;
-  // eslint-disable-next-line dot-notation
-  return Optional.from((win as any)['visualViewport']);
+  if (PlatformDetection.detect().browser.isFirefox()) {
+    // TINY-7984: Firefox 91 is returning incorrect values for visualViewport.pageTop, so disable it for now
+    return Optional.none();
+  } else {
+    return Optional.from(win.visualViewport);
+  }
 };
 
 const bounds = (x: number, y: number, width: number, height: number): Bounds => ({
@@ -80,6 +70,5 @@ const bind = (name: string, callback: EventHandler, _win?: Window): EventUnbinde
 export {
   bind,
   get,
-  getBounds,
-  WindowVisualViewport
+  getBounds
 };

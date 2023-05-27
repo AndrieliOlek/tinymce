@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import Env from '../Env';
 
 interface KeyboardLikeEvent {
@@ -19,6 +12,7 @@ interface VK {
   DELETE: number;
   DOWN: number;
   ENTER: number;
+  ESC: number;
   LEFT: number;
   RIGHT: number;
   SPACEBAR: number;
@@ -42,6 +36,7 @@ const VK: VK = {
   DELETE: 46,
   DOWN: 40,
   ENTER: 13,
+  ESC: 27,
   LEFT: 37,
   RIGHT: 39,
   SPACEBAR: 32,
@@ -58,7 +53,7 @@ const VK: VK = {
 
   metaKeyPressed: (e: KeyboardLikeEvent): boolean => {
     // Check if ctrl or meta key is pressed. Edge case for AltGr on Windows where it produces ctrlKey+altKey states
-    return (Env.mac ? e.metaKey : e.ctrlKey && !e.altKey);
+    return Env.os.isMacOS() || Env.os.isiOS() ? e.metaKey : e.ctrlKey && !e.altKey;
   }
 };
 

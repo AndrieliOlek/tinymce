@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Fun, Optional } from '@ephox/katamari';
 import { SugarElement } from '@ephox/sugar';
 
@@ -16,17 +9,17 @@ import * as BoundaryLocation from './BoundaryLocation';
 import * as InlineUtils from './InlineUtils';
 import { needsToHaveNbsp } from './Nbsps';
 
-const insertSpaceOrNbspAtPosition = (root: SugarElement, pos: CaretPosition): Optional<CaretPosition> =>
+const insertSpaceOrNbspAtPosition = (root: SugarElement<Node>, pos: CaretPosition): Optional<CaretPosition> =>
   needsToHaveNbsp(root, pos) ? insertNbspAtPosition(pos) : insertSpaceAtPosition(pos);
 
-const locationToCaretPosition = (root: SugarElement) => (location: BoundaryLocation.LocationAdt) => location.fold(
+const locationToCaretPosition = (root: SugarElement<Node>) => (location: BoundaryLocation.LocationAdt) => location.fold(
   (element) => CaretFinder.prevPosition(root.dom, CaretPosition.before(element)),
   (element) => CaretFinder.firstPositionIn(element),
   (element) => CaretFinder.lastPositionIn(element),
   (element) => CaretFinder.nextPosition(root.dom, CaretPosition.after(element))
 );
 
-const insertInlineBoundarySpaceOrNbsp = (root: SugarElement, pos: CaretPosition) => (checkPos: CaretPosition) =>
+const insertInlineBoundarySpaceOrNbsp = (root: SugarElement<Node>, pos: CaretPosition) => (checkPos: CaretPosition) =>
   needsToHaveNbsp(root, checkPos) ? insertNbspAtPosition(pos) : insertSpaceAtPosition(pos);
 
 const setSelection = (editor: Editor) => (pos: CaretPosition) => {
@@ -35,7 +28,7 @@ const setSelection = (editor: Editor) => (pos: CaretPosition) => {
   return true;
 };
 
-const insertSpaceOrNbspAtSelection = (editor: Editor): boolean => {
+const insertSpaceOrNbspAtSelection = (editor: Editor): Optional<() => void> => {
   const pos = CaretPosition.fromRangeStart(editor.selection.getRng());
   const root = SugarElement.fromDom(editor.getBody());
 
@@ -45,10 +38,10 @@ const insertSpaceOrNbspAtSelection = (editor: Editor): boolean => {
 
     return BoundaryLocation.readLocation(isInlineTarget, editor.getBody(), caretPosition)
       .bind(locationToCaretPosition(root))
-      .bind(insertInlineBoundarySpaceOrNbsp(root, pos))
-      .exists(setSelection(editor));
+      .map((checkPos) => () =>
+        insertInlineBoundarySpaceOrNbsp(root, pos)(checkPos).each(setSelection(editor)));
   } else {
-    return false;
+    return Optional.none();
   }
 };
 

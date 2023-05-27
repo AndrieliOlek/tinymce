@@ -1,19 +1,13 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
-import { Obj } from '@ephox/katamari';
+import { Arr, Fun, Obj, Type } from '@ephox/katamari';
 import { PredicateExists, SugarElement } from '@ephox/sugar';
 
 import DOMUtils from '../api/dom/DOMUtils';
 import Editor from '../api/Editor';
-import * as Settings from '../api/Settings';
+import * as Events from '../api/Events';
+import { getTextRootBlockElements } from '../api/html/Schema';
+import * as Options from '../api/Options';
 import Tools from '../api/util/Tools';
 import * as Bookmarks from '../bookmark/Bookmarks';
-import { IdBookmark, IndexBookmark } from '../bookmark/BookmarkTypes';
 import * as Empty from '../dom/Empty';
 import * as NodeType from '../dom/NodeType';
 import * as RangeNormalizer from '../selection/RangeNormalizer';
@@ -21,42 +15,23 @@ import { RangeLikeObject } from '../selection/RangeTypes';
 import * as RangeWalk from '../selection/RangeWalk';
 import * as SelectionUtils from '../selection/SelectionUtils';
 import * as TableCellSelection from '../selection/TableCellSelection';
+import * as Zwsp from '../text/Zwsp';
 import * as CaretFormat from './CaretFormat';
 import * as ExpandRange from './ExpandRange';
 import { isCaretNode } from './FormatContainer';
-import { ApplyFormat, BlockFormat, FormatVars, InlineFormat, SelectorFormat } from './FormatTypes';
+import { ApplyFormat, BlockFormat, FormatVars, InlineFormat } from './FormatTypes';
 import * as FormatUtils from './FormatUtils';
 import * as Hooks from './Hooks';
+import * as ListItemFormat from './ListItemFormat';
 import * as MatchFormat from './MatchFormat';
 import * as MergeFormats from './MergeFormats';
 
 const each = Tools.each;
 
-type ApplyFormatProp = keyof InlineFormat | keyof BlockFormat | keyof SelectorFormat;
-
-const hasFormatProperty = (format: ApplyFormat, prop: ApplyFormatProp): boolean =>
-  Obj.hasNonNullableKey(format as any, prop);
-
-const isElementNode = (node: Node) => {
-  return node && node.nodeType === 1 && !Bookmarks.isBookmarkNode(node) && !isCaretNode(node) && !NodeType.isBogus(node);
-};
-
 const canFormatBR = (editor: Editor, format: ApplyFormat, node: HTMLBRElement, parentName: string) => {
   // TINY-6483: Can format 'br' if it is contained in a valid empty block and an inline format is being applied
-  if (Settings.canFormatEmptyLines(editor) && FormatUtils.isInlineFormat(format)) {
-    // A curated list using the textBlockElements map and parts of the blockElements map from the schema
-    const validBRParentElements: Record<string, {}> = {
-      ...editor.schema.getTextBlockElements(),
-      td: {},
-      th: {},
-      li: {},
-      dt: {},
-      dd: {},
-      figcaption: {},
-      caption: {},
-      details: {},
-      summary: {}
-    };
+  if (Options.canFormatEmptyLines(editor) && FormatUtils.isInlineFormat(format) && node.parentNode) {
+    const validBRParentElements = getTextRootBlockElements(editor.schema);
     // If a caret node is present, the format should apply to that, not the br (applicable to collapsed selections)
     const hasCaretNodeSibling = PredicateExists.sibling(SugarElement.fromDom(node), (sibling) => isCaretNode(sibling.dom));
     return Obj.hasNonNullableKey(validBRParentElements, parentName) && Empty.isEmpty(SugarElement.fromDom(node.parentNode), false) && !hasCaretNodeSibling;
@@ -65,82 +40,120 @@ const canFormatBR = (editor: Editor, format: ApplyFormat, node: HTMLBRElement, p
   }
 };
 
-const applyFormat = (ed: Editor, name: string, vars?: FormatVars, node?: Node | RangeLikeObject) => {
+const applyStyles = (dom: DOMUtils, elm: Element, format: ApplyFormat, vars: FormatVars | undefined) => {
+  each(format.styles, (value, name) => {
+    dom.setStyle(elm, name, FormatUtils.replaceVars(value, vars));
+  });
+
+  // Needed for the WebKit span spam bug
+  // TODO: Remove this once WebKit/Blink fixes this
+  if (format.styles) {
+    const styleVal = dom.getAttrib(elm, 'style');
+
+    if (styleVal) {
+      dom.setAttrib(elm, 'data-mce-style', styleVal);
+    }
+  }
+};
+
+const applyFormatAction = (ed: Editor, name: string, vars?: FormatVars, node?: Node | RangeLikeObject | null): void => {
   const formatList = ed.formatter.get(name) as ApplyFormat[];
   const format = formatList[0];
   const isCollapsed = !node && ed.selection.isCollapsed();
   const dom = ed.dom;
   const selection = ed.selection;
 
-  // TODO: Add actual type for fmt below
-  const setElementFormat = (elm: Node, fmt?: ApplyFormat) => {
-    fmt = fmt || format;
-
-    if (elm) {
-      if (fmt.onformat) {
-        fmt.onformat(elm, fmt as any, vars, node);
-      }
-
-      each(fmt.styles, (value, name) => {
-        dom.setStyle(elm, name, FormatUtils.replaceVars(value, vars));
-      });
-
-      // Needed for the WebKit span spam bug
-      // TODO: Remove this once WebKit/Blink fixes this
-      if (fmt.styles) {
-        const styleVal = dom.getAttrib(elm, 'style');
-
-        if (styleVal) {
-          dom.setAttrib(elm, 'data-mce-style', styleVal);
-        }
-      }
-
-      each(fmt.attributes, (value, name) => {
-        dom.setAttrib(elm, name, FormatUtils.replaceVars(value, vars));
-      });
-
-      each(fmt.classes, (value) => {
-        value = FormatUtils.replaceVars(value, vars);
-
-        if (!dom.hasClass(elm, value)) {
-          dom.addClass(elm, value);
-        }
-      });
+  const setElementFormat = (elm: Element, fmt: ApplyFormat = format) => {
+    if (Type.isFunction(fmt.onformat)) {
+      fmt.onformat(elm, fmt as any, vars, node);
     }
+
+    applyStyles(dom, elm, fmt, vars);
+
+    each(fmt.attributes, (value, name) => {
+      dom.setAttrib(elm, name, FormatUtils.replaceVars(value, vars));
+    });
+
+    each(fmt.classes, (value) => {
+      const newValue = FormatUtils.replaceVars(value, vars);
+
+      if (!dom.hasClass(elm, newValue)) {
+        dom.addClass(elm, newValue);
+      }
+    });
   };
 
-  const applyNodeStyle = (formatList, node: Node) => {
+  const applyNodeStyle = (formatList: ApplyFormat[], node: Node) => {
     let found = false;
 
-    if (!FormatUtils.isSelectorFormat(format)) {
-      return false;
-    }
-
     // Look for matching formats
-    each(formatList, (format: any) => {
+    each(formatList, (format) => {
+      if (!FormatUtils.isSelectorFormat(format)) {
+        return false;
+      }
+
+      // Check if the node is nonediatble and if the format can override noneditable node
+      if (dom.getContentEditable(node) === 'false' && !format.ceFalseOverride) {
+        return true;
+      }
+
       // Check collapsed state if it exists
-      if ('collapsed' in format && format.collapsed !== isCollapsed) {
-        return;
+      if (Type.isNonNullable(format.collapsed) && format.collapsed !== isCollapsed) {
+        return true;
       }
 
       if (dom.is(node, format.selector) && !isCaretNode(node)) {
-        setElementFormat(node, format);
+        setElementFormat(node as Element, format);
         found = true;
         return false;
       }
+
+      return true;
     });
 
     return found;
   };
 
-  const applyRngStyle = (dom: DOMUtils, rng: RangeLikeObject, bookmark: IdBookmark | IndexBookmark, nodeSpecific?: boolean) => {
+  const createWrapElement = (wrapName: string | undefined): HTMLElement | null => {
+    if (Type.isString(wrapName)) {
+      const wrapElm = dom.create(wrapName);
+      setElementFormat(wrapElm);
+      return wrapElm;
+    } else {
+      return null;
+    }
+  };
+
+  const applyRngStyle = (dom: DOMUtils, rng: RangeLikeObject, nodeSpecific: boolean) => {
     const newWrappers: Element[] = [];
     let contentEditable = true;
 
     // Setup wrapper element
-    const wrapName = (format as InlineFormat).inline || (format as BlockFormat).block;
-    const wrapElm = dom.create(wrapName);
-    setElementFormat(wrapElm);
+    const wrapName: string | undefined = (format as InlineFormat).inline || (format as BlockFormat).block;
+    const wrapElm = createWrapElement(wrapName);
+
+    const isMatchingWrappingBlock = (node: Node) =>
+      FormatUtils.isWrappingBlockFormat(format) && MatchFormat.matchNode(ed, node, name, vars);
+
+    const canRenameBlock = (node: Node, parentName: string, isEditableDescendant: boolean) => {
+      const isValidBlockFormatForNode =
+        FormatUtils.isNonWrappingBlockFormat(format) &&
+        FormatUtils.isTextBlock(ed.schema, node) &&
+        FormatUtils.isValid(ed, parentName, wrapName);
+      return isEditableDescendant && isValidBlockFormatForNode;
+    };
+
+    const canWrapNode = (node: Node, parentName: string, isEditableDescendant: boolean, isWrappableNoneditableElm: boolean) => {
+      const nodeName = node.nodeName.toLowerCase();
+      const isValidWrapNode =
+        FormatUtils.isValid(ed, wrapName, nodeName) &&
+        FormatUtils.isValid(ed, parentName, wrapName);
+      // If it is not node specific, it means that it was not passed into 'formatter.apply` and is within the editor selection
+      const isZwsp = !nodeSpecific && NodeType.isText(node) && Zwsp.isZwsp(node.data);
+      const isCaret = isCaretNode(node);
+      const isCorrectFormatForNode = !FormatUtils.isInlineFormat(format) || !dom.isBlock(node);
+      return (isEditableDescendant || isWrappableNoneditableElm) && isValidWrapNode && !isZwsp && !isCaret && isCorrectFormatForNode;
+    };
 
     RangeWalk.walk(dom, rng, (nodes) => {
       let currentWrapElm: Element | null;
@@ -150,15 +163,20 @@ const applyFormat = (ed: Editor, name: string, vars?: FormatVars, node?: Node | 
       const process = (node: Node) => {
         let hasContentEditableState = false;
         let lastContentEditable = contentEditable;
-        const nodeName = node.nodeName.toLowerCase();
-        const parentName = node.parentNode.nodeName.toLowerCase();
+        let isWrappableNoneditableElm = false;
+        const parentNode = node.parentNode as Node;
+        const parentName = parentNode.nodeName.toLowerCase();
 
         // Node has a contentEditable value
-        if (NodeType.isElement(node) && dom.getContentEditable(node)) {
+        const contentEditableValue = dom.getContentEditable(node);
+        if (Type.isNonNullable(contentEditableValue)) {
           lastContentEditable = contentEditable;
-          contentEditable = dom.getContentEditable(node) === 'true';
-          hasContentEditableState = true; // We don't want to wrap the container only it's children
+          contentEditable = contentEditableValue === 'true';
+          // Unless the noneditable element is wrappable, we don't want to wrap the container, only it's editable children
+          hasContentEditableState = true;
+          isWrappableNoneditableElm = FormatUtils.isWrappableNoneditable(ed, node);
         }
+        const isEditableDescendant = contentEditable && !hasContentEditableState;
 
         // Stop wrapping on br elements except when valid
         if (NodeType.isBr(node) && !canFormatBR(ed, format, node, parentName)) {
@@ -170,16 +188,12 @@ const applyFormat = (ed: Editor, name: string, vars?: FormatVars, node?: Node | 
           return;
         }
 
-        // If node is wrapper type
-        if (format.wrapper && MatchFormat.matchNode(ed, node, name, vars)) {
+        if (isMatchingWrappingBlock(node)) {
           currentWrapElm = null;
           return;
         }
 
-        // Can we rename the block
-        // TODO: Break this if up, too complex
-        if (contentEditable && !hasContentEditableState && FormatUtils.isBlockFormat(format) &&
-          !format.wrapper && FormatUtils.isTextBlock(ed, nodeName) && FormatUtils.isValid(ed, parentName, wrapName)) {
+        if (canRenameBlock(node, parentName, isEditableDescendant)) {
           const elm = dom.rename(node as Element, wrapName);
           setElementFormat(elm);
           newWrappers.push(elm);
@@ -187,36 +201,33 @@ const applyFormat = (ed: Editor, name: string, vars?: FormatVars, node?: Node | 
           return;
         }
 
-        // Handle selector patterns
         if (FormatUtils.isSelectorFormat(format)) {
-          const found = applyNodeStyle(formatList, node);
+          let found = applyNodeStyle(formatList, node);
 
-          // TINY-6567 Include the last node in the selection
-          if (NodeType.isText(node) && FormatUtils.hasBlockChildren(dom, node.parentNode)) {
-            applyNodeStyle(formatList, node.parentNode);
+          // TINY-6567/TINY-7393: Include the parent if using an expanded selector format and no match was found for the current node
+          if (!found && Type.isNonNullable(parentNode) && FormatUtils.shouldExpandToSelector(format)) {
+            found = applyNodeStyle(formatList, parentNode);
           }
 
           // Continue processing if a selector match wasn't found and a inline element is defined
-          if (!hasFormatProperty(format, 'inline') || found) {
+          if (!FormatUtils.isInlineFormat(format) || found) {
             currentWrapElm = null;
             return;
           }
         }
 
-        // Is it valid to wrap this item
-        // TODO: Break this if up, too complex
-        if (contentEditable && !hasContentEditableState && FormatUtils.isValid(ed, wrapName, nodeName) && FormatUtils.isValid(ed, parentName, wrapName) &&
-          !(!nodeSpecific && node.nodeType === 3 &&
-            node.nodeValue.length === 1 &&
-            node.nodeValue.charCodeAt(0) === 65279) &&
-          !isCaretNode(node) &&
-          (!hasFormatProperty(format, 'inline') || !dom.isBlock(node))) {
+        if (Type.isNonNullable(wrapElm) && canWrapNode(node, parentName, isEditableDescendant, isWrappableNoneditableElm)) {
           // Start wrapping
           if (!currentWrapElm) {
             // Wrap the node
             currentWrapElm = dom.clone(wrapElm, false) as Element;
-            node.parentNode.insertBefore(currentWrapElm, node);
+            parentNode.insertBefore(currentWrapElm, node);
             newWrappers.push(currentWrapElm);
+          }
+
+          // Wrappable noneditable element has been handled so go back to previous state
+          if (isWrappableNoneditableElm && hasContentEditableState) {
+            contentEditable = lastContentEditable;
           }
 
           currentWrapElm.appendChild(node);
@@ -224,7 +235,7 @@ const applyFormat = (ed: Editor, name: string, vars?: FormatVars, node?: Node | 
           // Start a new wrapper for possible children
           currentWrapElm = null;
 
-          each(Tools.grep(node.childNodes), process);
+          Arr.each(Arr.from(node.childNodes), process);
 
           if (hasContentEditableState) {
             contentEditable = lastContentEditable; // Restore last contentEditable state from stack
@@ -233,22 +244,20 @@ const applyFormat = (ed: Editor, name: string, vars?: FormatVars, node?: Node | 
           // End the last wrapper
           currentWrapElm = null;
         }
-
       };
 
-      // Process siblings from range
-      each(nodes, process);
+      Arr.each(nodes, process);
     });
 
     // Apply formats to links as well to get the color of the underline to change as well
     if (format.links === true) {
-      each(newWrappers, (node) => {
-        const process = (node: Element) => {
+      Arr.each(newWrappers, (node) => {
+        const process = (node: Node) => {
           if (node.nodeName === 'A') {
-            setElementFormat(node, format);
+            setElementFormat(node as HTMLAnchorElement, format);
           }
 
-          each(Tools.grep(node.childNodes), process);
+          Arr.each(Arr.from(node.childNodes), process);
         };
 
         process(node);
@@ -256,11 +265,11 @@ const applyFormat = (ed: Editor, name: string, vars?: FormatVars, node?: Node | 
     }
 
     // Cleanup
-    each(newWrappers, (node) => {
+    Arr.each(newWrappers, (node) => {
       const getChildCount = (node: Node) => {
         let count = 0;
 
-        each(node.childNodes, (node) => {
+        Arr.each(node.childNodes, (node) => {
           if (!FormatUtils.isEmptyTextNode(node) && !Bookmarks.isBookmarkNode(node)) {
             count++;
           }
@@ -269,33 +278,18 @@ const applyFormat = (ed: Editor, name: string, vars?: FormatVars, node?: Node | 
         return count;
       };
 
-      const getChildElementNode = (root: Node): Node | false => {
-        let child: Node | false = false;
-        each(root.childNodes, (node) => {
-          if (isElementNode(node)) {
-            child = node;
-            return false; // break loop
-          }
-        });
-        return child;
-      };
-
-      const mergeStyles = (node: Element) => {
-        let clone;
-
-        const child = getChildElementNode(node);
-
-        // If child was found and of the same type as the current node
-        if (child && !Bookmarks.isBookmarkNode(child) && MatchFormat.matchName(dom, child, format)) {
-          clone = dom.clone(child, false);
+      const mergeStyles = (node: Element): Element => {
+        // Check if a child was found and of the same type as the current node
+        const childElement = Arr.find(node.childNodes, FormatUtils.isElementNode)
+          .filter((child) => dom.getContentEditable(child) !== 'false' && MatchFormat.matchName(dom, child, format));
+        return childElement.map((child) => {
+          const clone = dom.clone(child, false) as Element;
           setElementFormat(clone);
 
-          // "matchName" will made sure we're dealing with an element, so cast as one
           dom.replace(clone, node, true);
           dom.remove(child, true);
-        }
-
-        return clone || node;
+          return clone;
+        }).getOr(node);
       };
 
       const childCount = getChildCount(node);
@@ -308,7 +302,7 @@ const applyFormat = (ed: Editor, name: string, vars?: FormatVars, node?: Node | 
         return;
       }
 
-      if (FormatUtils.isInlineFormat(format) || format.wrapper) {
+      if (FormatUtils.isInlineFormat(format) || FormatUtils.isBlockFormat(format) && format.wrapper) {
         // Merges the current node with it's children of similar type to reduce the number of elements
         if (!format.exact && childCount === 1) {
           node = mergeStyles(node);
@@ -319,21 +313,18 @@ const applyFormat = (ed: Editor, name: string, vars?: FormatVars, node?: Node | 
         MergeFormats.mergeBackgroundColorAndFontSize(dom, format, vars, node);
         MergeFormats.mergeTextDecorationsAndColor(dom, format, vars, node);
         MergeFormats.mergeSubSup(dom, format, vars, node);
-        MergeFormats.mergeSiblings(dom, format, vars, node);
+        MergeFormats.mergeSiblings(ed, format, vars, node);
       }
     });
   };
 
-  if (dom.getContentEditable(selection.getNode()) === 'false') {
-    node = selection.getNode();
-    for (let i = 0, l = formatList.length; i < l; i++) {
-      const formatItem = formatList[i];
-      if (formatItem.ceFalseOverride && FormatUtils.isSelectorFormat(formatItem) && dom.is(node, formatItem.selector)) {
-        setElementFormat(node, formatItem);
-        return;
-      }
-    }
-
+  // TODO: TINY-9142: Remove this to make nested noneditable formatting work
+  const targetNode = FormatUtils.isNode(node) ? node : selection.getNode();
+  if (dom.getContentEditable(targetNode) === 'false' && !FormatUtils.isWrappableNoneditable(ed, targetNode)) {
+    // node variable is used by other functions above in the same scope so need to set it here
+    node = targetNode;
+    applyNodeStyle(formatList, node);
+    Events.fireFormatApply(ed, name, node, vars);
     return;
   }
 
@@ -344,41 +335,46 @@ const applyFormat = (ed: Editor, name: string, vars?: FormatVars, node?: Node | 
           const rng = dom.createRng();
           rng.setStartBefore(node);
           rng.setEndAfter(node);
-          applyRngStyle(dom, ExpandRange.expandRng(ed, rng, formatList), null, true);
+          applyRngStyle(dom, ExpandRange.expandRng(dom, rng, formatList), true);
         }
       } else {
-        applyRngStyle(dom, node, null, true);
+        applyRngStyle(dom, node, true);
       }
     } else {
       if (!isCollapsed || !FormatUtils.isInlineFormat(format) || TableCellSelection.getCellsFromEditor(ed).length) {
-        // Obtain selection node before selection is unselected by applyRngStyle
-        const curSelNode = selection.getNode();
-
-        // If the formats have a default block and we can't find a parent block then
-        // start wrapping it with a DIV this is for forced_root_blocks: false
-        // It's kind of a hack but people should be using the default block type P since all desktop editors work that way
-        const firstFormat = (formatList[0] as ApplyFormat & { defaultBlock?: string }); // TODO: Should this just check if it's a SelectorFormat
-        if (!ed.settings.forced_root_block && firstFormat.defaultBlock && !dom.getParent(curSelNode, dom.isBlock)) {
-          applyFormat(ed, firstFormat.defaultBlock);
-        }
-
         // Apply formatting to selection
         selection.setRng(RangeNormalizer.normalize(selection.getRng()));
-        SelectionUtils.preserve(selection, true, (bookmark) => {
-          SelectionUtils.runOnRanges(ed, (selectionRng, fake) => {
-            const expandedRng = fake ? selectionRng : ExpandRange.expandRng(ed, selectionRng, formatList);
-            applyRngStyle(dom, expandedRng, bookmark);
-          });
-        });
 
-        FormatUtils.moveStart(dom, selection, selection.getRng());
+        FormatUtils.preserveSelection(
+          ed,
+          () => {
+            SelectionUtils.runOnRanges(ed, (selectionRng, fake) => {
+              const expandedRng = fake ? selectionRng : ExpandRange.expandRng(dom, selectionRng, formatList);
+              applyRngStyle(dom, expandedRng, false);
+            });
+          },
+          Fun.always
+        );
+
         ed.nodeChanged();
       } else {
         CaretFormat.applyCaretFormat(ed, name, vars);
       }
+
+      ListItemFormat.getExpandedListItemFormat(ed.formatter, name).each((liFmt) => {
+        Arr.each(ListItemFormat.getFullySelectedListItems(ed.selection), (li) => applyStyles(dom, li, liFmt as ApplyFormat, vars));
+      });
     }
 
     Hooks.postProcess(name, ed);
+  }
+
+  Events.fireFormatApply(ed, name, node, vars);
+};
+
+const applyFormat = (editor: Editor, name: string, vars?: FormatVars, node?: Node | RangeLikeObject | null): void => {
+  if (editor.selection.isEditable()) {
+    applyFormatAction(editor, name, vars, node);
   }
 };
 

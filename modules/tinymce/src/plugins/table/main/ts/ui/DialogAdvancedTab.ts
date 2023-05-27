@@ -1,38 +1,18 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import Editor from 'tinymce/core/api/Editor';
 import { Dialog } from 'tinymce/core/api/ui/Ui';
 
-import { getTableBorderStyles } from '../api/Settings';
+import * as Options from '../api/Options';
+import { buildListItems } from './UiUtils';
 
-interface ClassListValue {
-  title?: string;
-  text?: string;
-  value: string;
-}
+const getAdvancedTab = (editor: Editor, dialogName: 'table' | 'row' | 'cell'): Dialog.TabSpec => {
+  const emptyBorderStyle: Dialog.ListBoxItemSpec[] = [{ text: 'Select...', value: '' }];
 
-interface ClassListGroup {
-  title?: string;
-  text?: string;
-  menu: ClassListItem[];
-}
-
-type ClassListItem = ClassListValue | ClassListGroup;
-
-const getAdvancedTab = (editor: Editor, dialogName: 'table' | 'row' | 'cell') => {
   const advTabItems: Dialog.BodyComponentSpec[] = [
     {
       name: 'borderstyle',
       type: 'listbox',
       label: 'Border style',
-      items: [
-        { text: 'Select...', value: '' },
-      ].concat(getTableBorderStyles(editor))
+      items: emptyBorderStyle.concat(buildListItems(Options.getTableBorderStyles(editor)))
     },
     {
       name: 'bordercolor',

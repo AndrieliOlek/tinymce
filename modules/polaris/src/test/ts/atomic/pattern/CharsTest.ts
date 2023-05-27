@@ -1,4 +1,4 @@
-import { assert, UnitTest } from '@ephox/bedrock-client';
+import { Assert, UnitTest } from '@ephox/bedrock-client';
 import { Arr } from '@ephox/katamari';
 
 import * as Chars from 'ephox/polaris/pattern/Chars';
@@ -53,7 +53,8 @@ UnitTest.test('CharsTest', () => {
     de: {
       label: 'German',
       html: 'http://character-code.com/german-html-codes.php',
-      chars: 'ÄäÉéÖöÜüß'
+      // TINY-7908: Including \u00AD (soft hyphens) because they appear to be more common in German text
+      chars: 'ÄäÉéÖöÜüß\u00AD'
     },
     nb: {
       label: 'Norwegian',
@@ -111,10 +112,10 @@ UnitTest.test('CharsTest', () => {
     });
 
     const leftovers = breaks.join('').trim();
-    assert.eq(
+    Assert.eq(
+      'Test: ' + label + '\nExpected all characters in: \n\n"' + str + '" to be known. \nUnknown: ' + leftovers,
       0,
-      leftovers.length,
-      'Test: ' + label + '\nExpected all characters in: \n\n"' + str + '" to be known. \nUnknown: ' + leftovers
+      leftovers.length
     );
   };
 

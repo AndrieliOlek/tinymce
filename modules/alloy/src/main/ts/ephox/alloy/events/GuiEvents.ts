@@ -1,11 +1,8 @@
-import { FieldSchema, StructureSchema } from '@ephox/boulder';
-import { Arr, Cell, Optional } from '@ephox/katamari';
-import { PlatformDetection } from '@ephox/sand';
-import { DomEvent, EventArgs, EventUnbinder, SelectorExists, SugarElement, SugarNode } from '@ephox/sugar';
+import { Arr, Singleton } from '@ephox/katamari';
+import { DomEvent, EventArgs, SelectorExists, SugarElement, SugarNode } from '@ephox/sugar';
 
 import * as Keys from '../alien/Keys';
 import * as SystemEvents from '../api/events/SystemEvents';
-import { EventFormat } from './SimulatedEvent';
 import * as TapEvent from './TapEvent';
 
 const isDangerous = (event: EventArgs<KeyboardEvent>): boolean => {
@@ -14,39 +11,16 @@ const isDangerous = (event: EventArgs<KeyboardEvent>): boolean => {
   return keyEv.which === Keys.BACKSPACE[0] && !Arr.contains([ 'input', 'textarea' ], SugarNode.name(event.target)) && !SelectorExists.closest(event.target, '[contenteditable="true"]');
 };
 
-const isFirefox = (): boolean => PlatformDetection.detect().browser.isFirefox();
-
 export interface GuiEventSettings {
-  triggerEvent: (eventName: string, event: EventFormat) => boolean;
-  stopBackspace?: boolean;
+  readonly triggerEvent: (eventName: string, event: EventArgs) => boolean;
+  readonly stopBackspace?: boolean;
 }
 
-const settingsSchema = StructureSchema.objOfOnly([
-  // triggerEvent(eventName, event)
-  FieldSchema.requiredFunction('triggerEvent'),
-  FieldSchema.defaulted('stopBackspace', true)
-]);
-
-const bindFocus = (container: SugarElement, handler: (evt: EventArgs) => void): EventUnbinder => {
-  if (isFirefox()) {
-    // https://bugzilla.mozilla.org/show_bug.cgi?id=687787
-    return DomEvent.capture(container, 'focus', handler);
-  } else {
-    return DomEvent.bind(container, 'focusin', handler);
-  }
-};
-
-const bindBlur = (container: SugarElement, handler: (evt: EventArgs) => void): EventUnbinder => {
-  if (isFirefox()) {
-    // https://bugzilla.mozilla.org/show_bug.cgi?id=687787
-    return DomEvent.capture(container, 'blur', handler);
-  } else {
-    return DomEvent.bind(container, 'focusout', handler);
-  }
-};
-
-const setup = (container: SugarElement, rawSettings: { }): { unbind: () => void } => {
-  const settings: GuiEventSettings = StructureSchema.asRawOrDie('Getting GUI events settings', settingsSchema, rawSettings);
+const setup = (container: SugarElement, rawSettings: GuiEventSettings): { unbind: () => void } => {
+  const settings: Required<GuiEventSettings> = {
+    stopBackspace: true,
+    ...rawSettings
+  };
 
   const pointerEvents = [
     'touchstart',
@@ -72,6 +46,7 @@ const setup = (container: SugarElement, rawSettings: { }): { unbind: () => void 
       'contextmenu',
       'change',
       'transitionend',
+      'transitioncancel',
       // Test the drag events
       'drag',
       'dragstart',
@@ -95,7 +70,7 @@ const setup = (container: SugarElement, rawSettings: { }): { unbind: () => void 
       }
     })
   );
-  const pasteTimeout = Cell(Optional.none<number>());
+  const pasteTimeout = Singleton.value<number>();
   const onPaste = DomEvent.bind(container, 'paste', (event) => {
     tapEvent.fireIfReady(event, 'paste').each((tapStopped) => {
       if (tapStopped) {
@@ -107,9 +82,9 @@ const setup = (container: SugarElement, rawSettings: { }): { unbind: () => void 
     if (stopped) {
       event.kill();
     }
-    pasteTimeout.set(Optional.some(setTimeout(() => {
+    pasteTimeout.set(setTimeout(() => {
       settings.triggerEvent(SystemEvents.postPaste(), event);
-    }, 0)));
+    }, 0));
   });
 
   const onKeydown = DomEvent.bind(container, 'keydown', (event) => {
@@ -117,20 +92,20 @@ const setup = (container: SugarElement, rawSettings: { }): { unbind: () => void 
     const stopped = settings.triggerEvent('keydown', event);
     if (stopped) {
       event.kill();
-    } else if (settings.stopBackspace === true && isDangerous(event)) {
+    } else if (settings.stopBackspace && isDangerous(event)) {
       event.prevent();
     }
   });
 
-  const onFocusIn = bindFocus(container, (event) => {
+  const onFocusIn = DomEvent.bind(container, 'focusin', (event) => {
     const stopped = settings.triggerEvent('focusin', event);
     if (stopped) {
       event.kill();
     }
   });
 
-  const focusoutTimeout = Cell(Optional.none<number>());
-  const onFocusOut = bindBlur(container, (event) => {
+  const focusoutTimeout = Singleton.value<number>();
+  const onFocusOut = DomEvent.bind(container, 'focusout', (event) => {
     const stopped = settings.triggerEvent('focusout', event);
     if (stopped) {
       event.kill();
@@ -139,9 +114,9 @@ const setup = (container: SugarElement, rawSettings: { }): { unbind: () => void 
     // INVESTIGATE: Come up with a better way of doing this. Related target can be used, but not on FF.
     // It allows the active element to change before firing the blur that we will listen to
     // for things like closing popups
-    focusoutTimeout.set(Optional.some(setTimeout(() => {
+    focusoutTimeout.set(setTimeout(() => {
       settings.triggerEvent(SystemEvents.postBlur(), event);
-    }, 0)));
+    }, 0));
   });
 
   const unbind = (): void => {
@@ -152,8 +127,8 @@ const setup = (container: SugarElement, rawSettings: { }): { unbind: () => void 
     onFocusIn.unbind();
     onFocusOut.unbind();
     onPaste.unbind();
-    pasteTimeout.get().each(clearTimeout);
-    focusoutTimeout.get().each(clearTimeout);
+    pasteTimeout.on(clearTimeout);
+    focusoutTimeout.on(clearTimeout);
   };
 
   return {

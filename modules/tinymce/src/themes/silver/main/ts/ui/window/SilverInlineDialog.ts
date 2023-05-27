@@ -1,18 +1,11 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 // DUPE with SilverDialog. Cleaning up.
 import {
-  AddEventsBehaviour, AlloyEvents, AlloyTriggers, Behaviour, Blocking, Composing, Focusing, GuiFactory, Keying, Memento, NativeEvents,
-  Receiving, Reflecting, Replacing, SimpleSpec, SystemEvents
+  AddEventsBehaviour, AlloyComponent, AlloyEvents, AlloyTriggers, Behaviour, Blocking, Composing, Focusing, GuiFactory, Keying, Memento, NativeEvents,
+  Receiving, Reflecting, Replacing, SystemEvents
 } from '@ephox/alloy';
-import { DialogManager } from '@ephox/bridge';
+import { Dialog, DialogManager } from '@ephox/bridge';
 import { Fun, Id, Optional } from '@ephox/katamari';
-import { Attribute, SugarNode } from '@ephox/sugar';
+import { Attribute, Classes, SugarElement, SugarNode } from '@ephox/sugar';
 
 import { UiFactoryBackstage } from '../../backstage/Backstage';
 import { RepresentingConfigs } from '../alien/RepresentingConfigs';
@@ -26,33 +19,41 @@ import { renderInlineFooter } from './SilverDialogFooter';
 import { renderInlineHeader } from './SilverDialogHeader';
 import { getDialogApi } from './SilverDialogInstanceApi';
 
-const renderInlineDialog = <T>(dialogInit: DialogManager.DialogInit<T>, extra: SilverDialogCommon.WindowExtra, backstage: UiFactoryBackstage, ariaAttrs: boolean) => {
+interface RenderedDialog<T extends Dialog.DialogData> {
+  readonly dialog: AlloyComponent;
+  readonly instanceApi: Dialog.DialogInstanceApi<T>;
+}
+
+const renderInlineDialog = <T extends Dialog.DialogData>(dialogInit: DialogManager.DialogInit<T>, extra: SilverDialogCommon.WindowExtra<T>, backstage: UiFactoryBackstage, ariaAttrs: boolean): RenderedDialog<T> => {
+  const dialogId = Id.generate('dialog');
   const dialogLabelId = Id.generate('dialog-label');
   const dialogContentId = Id.generate('dialog-content');
+  const internalDialog = dialogInit.internalDialog;
 
-  const updateState = (_comp, incoming: DialogManager.DialogInit<T>) => Optional.some(incoming);
+  const updateState = (_comp: AlloyComponent, incoming: DialogManager.DialogInit<T>) => Optional.some(incoming);
 
   const memHeader = Memento.record(
     renderInlineHeader({
-      title: dialogInit.internalDialog.title,
+      title: internalDialog.title,
       draggable: true
-    }, dialogLabelId, backstage.shared.providers) as SimpleSpec
+    }, dialogId, dialogLabelId, backstage.shared.providers)
   );
 
   const memBody = Memento.record(
     renderInlineBody({
-      body: dialogInit.internalDialog.body
-    }, dialogContentId, backstage, ariaAttrs) as SimpleSpec
+      body: internalDialog.body,
+      initialData: internalDialog.initialData,
+    }, dialogId, dialogContentId, backstage, ariaAttrs)
   );
 
-  const storagedMenuButtons = SilverDialogCommon.mapMenuButtons(dialogInit.internalDialog.buttons);
+  const storagedMenuButtons = SilverDialogCommon.mapMenuButtons(internalDialog.buttons);
 
   const objOfCells = SilverDialogCommon.extractCellsToObject(storagedMenuButtons);
 
   const memFooter = Memento.record(
     renderInlineFooter({
       buttons: storagedMenuButtons
-    }, backstage)
+    }, dialogId, backstage)
   );
 
   const dialogEvents = SilverDialogEvents.initDialog(
@@ -69,15 +70,16 @@ const renderInlineDialog = <T>(dialogInit: DialogManager.DialogInit<T>, extra: S
     backstage.shared.getSink
   );
 
+  const inlineClass = 'tox-dialog-inline';
+
   // TODO: Disable while validating?
   const dialog = GuiFactory.build({
     dom: {
       tag: 'div',
-      classes: [ 'tox-dialog', 'tox-dialog-inline' ],
+      classes: [ 'tox-dialog', inlineClass ],
       attributes: {
         role: 'dialog',
-        ['aria-labelledby']: dialogLabelId,
-        ['aria-describedby']: dialogContentId
+        ['aria-labelledby']: dialogLabelId
       }
     },
     eventOrder: {
@@ -96,10 +98,11 @@ const renderInlineDialog = <T>(dialogInit: DialogManager.DialogInit<T>, extra: S
         },
         useTabstopAt: (elem) => !NavigableObject.isPseudoStop(elem) && (
           SugarNode.name(elem) !== 'button' || Attribute.get(elem, 'disabled') !== 'disabled'
-        )
+        ),
+        firstTabstop: 1
       }),
       Reflecting.config({
-        channel: dialogChannel,
+        channel: `${dialogChannel}-${dialogId}`,
         updateState,
         initialData: dialogInit
       }),
@@ -126,15 +129,29 @@ const renderInlineDialog = <T>(dialogInit: DialogManager.DialogInit<T>, extra: S
     ]
   });
 
+  const toggleFullscreen = (): void => {
+    const fullscreenClass = 'tox-dialog--fullscreen';
+    const sugarBody = SugarElement.fromDom(dialog.element.dom);
+    if (!Classes.hasAll(sugarBody, [ fullscreenClass ])) {
+      Classes.remove(sugarBody, [ inlineClass ]);
+      Classes.add(sugarBody, [ fullscreenClass ]);
+    } else {
+      Classes.remove(sugarBody, [ fullscreenClass ]);
+      Classes.add(sugarBody, [ inlineClass ]);
+    }
+  };
+
   // TODO: Clean up the dupe between this (InlineDialog) and SilverDialog
   const instanceApi = getDialogApi<T>({
+    getId: Fun.constant(dialogId),
     getRoot: Fun.constant(dialog),
     getFooter: () => memFooter.get(dialog),
     getBody: () => memBody.get(dialog),
     getFormWrapper: () => {
       const body = memBody.get(dialog);
       return Composing.getCurrent(body).getOr(body);
-    }
+    },
+    toggleFullscreen
   }, extra.redial, objOfCells);
 
   return {

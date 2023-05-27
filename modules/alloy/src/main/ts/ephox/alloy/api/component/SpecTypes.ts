@@ -32,6 +32,7 @@ export interface RawDomSchema extends OptionalDomSchema {
 }
 
 export interface ComponentDetail {
+  uid: string;
   dom: RawDomSchema;
   components: AlloyComponent[];
   events: {
@@ -40,7 +41,7 @@ export interface ComponentDetail {
   apis?: {};
   behaviours?: AlloyBehaviourRecord;
   domModification?: Partial<DomModification>;
-  eventOrder?: {};
+  eventOrder?: Record<string, string[]>;
 }
 
 export interface ComponentSpec {
@@ -50,7 +51,7 @@ export interface ComponentSpec {
   apis?: {};
   behaviours?: AlloyBehaviourRecord;
   domModification?: Partial<DomModification>;
-  eventOrder?: {};
+  eventOrder?: Record<string, string[]>;
 }
 
 export interface SketchSpec extends ComponentSpec {

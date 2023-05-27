@@ -1,19 +1,18 @@
 import { describe, it } from '@ephox/bedrock-client';
-import { TinyHooks } from '@ephox/mcagar';
+import { TinyHooks } from '@ephox/wrap-mcagar';
 import { assert } from 'chai';
 
 import Editor from 'tinymce/core/api/Editor';
 import { MediaData, MediaDialogData } from 'tinymce/plugins/media/core/Types';
 import Plugin from 'tinymce/plugins/media/Plugin';
 import * as Dialog from 'tinymce/plugins/media/ui/Dialog';
-import Theme from 'tinymce/themes/silver/Theme';
 
 describe('browser.tinymce.plugins.media.core.DataUnwrapTest', () => {
   TinyHooks.bddSetupLight<Editor>({
     plugins: [ 'media' ],
     toolbar: 'media',
     base_url: '/project/tinymce/js/tinymce'
-  }, [ Plugin, Theme ]);
+  }, [ Plugin ]);
 
   const inputData: MediaDialogData = {
     source: {

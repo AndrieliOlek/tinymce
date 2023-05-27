@@ -1,9 +1,8 @@
 import { context, describe, it } from '@ephox/bedrock-client';
-import { TinyHooks } from '@ephox/mcagar';
+import { TinyHooks } from '@ephox/wrap-mcagar';
 
 import Editor from 'tinymce/core/api/Editor';
 import Plugin from 'tinymce/plugins/table/Plugin';
-import Theme from 'tinymce/themes/silver/Theme';
 
 import { pAssertStyleCanBeToggledOnAndOff } from '../../module/test/TableModifiersTestUtils';
 
@@ -17,13 +16,14 @@ describe('browser.tinymce.plugins.table.ui.TableValignButtonsTest', () => {
     },
     menubar: 'table',
     base_url: '/project/tinymce/js/tinymce',
-  }, [ Plugin, Theme ], true);
+  }, [ Plugin ], true);
 
   context('Test for a single cell selection', () => {
     it('TINY-7477: Check that valign works for Top value', async () =>
       await pAssertStyleCanBeToggledOnAndOff(hook.editor(), {
         menuTitle: 'Vertical align',
         subMenuTitle: 'Top',
+        subMenuRemoveTitle: 'None',
         checkMarkEntries: 4,
         rows: 1,
         columns: 1,
@@ -35,6 +35,7 @@ describe('browser.tinymce.plugins.table.ui.TableValignButtonsTest', () => {
       await pAssertStyleCanBeToggledOnAndOff(hook.editor(), {
         menuTitle: 'Vertical align',
         subMenuTitle: 'Middle',
+        subMenuRemoveTitle: 'None',
         checkMarkEntries: 4,
         rows: 1,
         columns: 1,
@@ -46,6 +47,7 @@ describe('browser.tinymce.plugins.table.ui.TableValignButtonsTest', () => {
       await pAssertStyleCanBeToggledOnAndOff(hook.editor(), {
         menuTitle: 'Vertical align',
         subMenuTitle: 'Bottom',
+        subMenuRemoveTitle: 'None',
         checkMarkEntries: 4,
         rows: 1,
         columns: 1,
@@ -59,6 +61,7 @@ describe('browser.tinymce.plugins.table.ui.TableValignButtonsTest', () => {
       await pAssertStyleCanBeToggledOnAndOff(hook.editor(), {
         menuTitle: 'Vertical align',
         subMenuTitle: 'Top',
+        subMenuRemoveTitle: 'None',
         checkMarkEntries: 4,
         rows: 2,
         columns: 2,
@@ -70,6 +73,7 @@ describe('browser.tinymce.plugins.table.ui.TableValignButtonsTest', () => {
       await pAssertStyleCanBeToggledOnAndOff(hook.editor(), {
         menuTitle: 'Vertical align',
         subMenuTitle: 'Middle',
+        subMenuRemoveTitle: 'None',
         checkMarkEntries: 4,
         rows: 2,
         columns: 2,
@@ -81,6 +85,7 @@ describe('browser.tinymce.plugins.table.ui.TableValignButtonsTest', () => {
       await pAssertStyleCanBeToggledOnAndOff(hook.editor(), {
         menuTitle: 'Vertical align',
         subMenuTitle: 'Bottom',
+        subMenuRemoveTitle: 'None',
         checkMarkEntries: 4,
         rows: 2,
         columns: 2,

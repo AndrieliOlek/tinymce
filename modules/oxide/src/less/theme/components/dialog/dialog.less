@@ -1,11 +1,4 @@
 //
-// Copyright (c) Tiny Technologies, Inc. All rights reserved.
-// Licensed under the LGPL or a commercial license.
-// For LGPL see License.txt in the project root for license information.
-// For commercial licenses see https://www.tiny.cloud/
-//
-
-//
 // Dialog
 //
 
@@ -16,8 +9,8 @@
 @dialog-busy-backdrop-background-color: @dialog-backdrop-background-color;
 
 @dialog-border-color: @border-color;
-@dialog-border-radius: @panel-border-radius;
-@dialog-border-width: 1px;
+@dialog-border-radius: 10px;
+@dialog-border-width: 0px;
 @dialog-box-shadow: 0 16px 16px -10px fade(@color-black, 15%), 0 0 40px 1px fade(@color-black, 15%);
 
 @dialog-header-background-color: @dialog-background-color;
@@ -26,7 +19,7 @@
 
 @dialog-footer-background-color: @dialog-background-color;
 @dialog-footer-padding: @pad-sm @pad-md;
-@dialog-footer-separator-border: 1px solid @dialog-border-color;
+@dialog-footer-separator-border: none;
 
 @dialog-body-padding: @pad-md @pad-md;
 
@@ -67,7 +60,7 @@
 @dialog-body-h2-text-color: @text-color;
 @dialog-body-h2-text-transform: none;
 
-@dialog-table-border-color: @border-color;
+@dialog-table-border-color: darken(@border-color, 55%);
 @dialog-nav-focus-background-color: fade(@color-tint, 10%);
 
 // These get stacked on top of the global dialog z-index (1100)
@@ -123,6 +116,7 @@
       body:not(.tox-force-desktop) & {
         align-self: flex-start;
         margin: @pad-sm auto;
+        max-height: calc(100vh - @pad-sm * 2);
         width: calc(100vw - @pad-md);
       }
     }
@@ -180,7 +174,6 @@
     color: @dialog-body-text-color;
     display: flex;
     flex: 1;
-    -ms-flex-preferred-size: auto;
     font-size: @dialog-body-font-size;
     font-style: @dialog-body-font-style;
     font-weight: @dialog-body-font-weight;
@@ -237,8 +230,7 @@
     display: flex;
     flex: 1;
     flex-direction: column;
-    -ms-flex-preferred-size: auto;
-    max-height: 650px; // TODO (verify max-height for dialogs)
+    max-height: ~"min(650px, calc(100vh - 110px))"; // TODO (verify max-height for dialogs)
     overflow: auto; //overflow controls all scrolling in the dialogs
     -webkit-overflow-scrolling: touch;
     padding: @dialog-body-padding;
@@ -342,6 +334,15 @@
     max-width: 1200px;
   }
 
+  .tox-dialog--fullscreen {
+    height: 100%;
+    max-width: 100%;
+
+    .tox-dialog__body-content {
+      max-height: 100%;
+    }
+  }
+
   .tox-dialog--width-md {
     // TODO (verify width for size medium)
     max-width: 800px;
@@ -398,6 +399,10 @@
         font-weight: @font-weight-bold;
         padding-bottom: @pad-sm;
       }
+
+      th:first-child {
+        padding-right: @pad-sm;
+      }
     }
 
     tbody {
@@ -414,6 +419,17 @@
       padding-bottom: @pad-sm;
       padding-top: @pad-sm;
     }
+
+    td:first-child {
+      padding-right: @pad-sm;
+    }
+  }
+
+  // Allow iframes to have consistent BG with Editor iframe
+  .tox-dialog__iframe {
+    &.tox-dialog__iframe--opaque {
+      background: @edit-area-iframe-background-color;
+    }
   }
 
   // Make popups in a dialog appear over other dialog (urlinput, colorinput etc)
@@ -428,18 +444,15 @@
     display: flex;
     flex: 1;
     flex-direction: column;
-    -ms-flex-preferred-size: auto;
 
     .tox-navobj {
       display: flex;
       flex: 1;
-      -ms-flex-preferred-size: auto;
     }
 
     // the nav object spec is surrounded by tab stop objects, so apply flex to the middle element
     .tox-navobj :nth-child(2) {
       flex: 1;
-      -ms-flex-preferred-size: auto;
       // IE 11
       height: 100%;
     }
@@ -462,13 +475,6 @@
 
   .tox-dialog-dock-transition.tox-dialog-dock-fadein {
     transition-delay: 0s;
-  }
-}
-
-.tox.tox-platform-ie {
-  /* IE11 CSS styles go here */
-  .tox-dialog-wrap {
-    position: -ms-device-fixed;
   }
 }
 

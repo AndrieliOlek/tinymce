@@ -1,19 +1,28 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Arr } from '@ephox/katamari';
 
-const generate = () => {
-  const ungroupedOrder = [ ];
-  const groupOrder = [ ];
+export interface SelectorFormatItem {
+  readonly title: string;
+  readonly format: string;
+}
 
-  const groups = { };
+export interface SelectorMenuItem {
+  readonly title: string;
+  readonly items: SelectorFormatItem[];
+}
 
-  const addItemToGroup = (groupTitle, itemInfo) => {
+export interface SelectorModel {
+  readonly addItemToGroup: (groupTitle: string, itemInfo: SelectorFormatItem) => void;
+  readonly addItem: (itemInfo: SelectorFormatItem) => void;
+  readonly toFormats: () => Array<SelectorMenuItem | SelectorFormatItem>;
+}
+
+const generate = (): SelectorModel => {
+  const ungroupedOrder: SelectorFormatItem[] = [ ];
+  const groupOrder: string[] = [ ];
+
+  const groups: Record<string, SelectorFormatItem[]> = { };
+
+  const addItemToGroup = (groupTitle: string, itemInfo: SelectorFormatItem) => {
     if (groups[groupTitle]) {
       groups[groupTitle].push(itemInfo);
     } else {
@@ -22,12 +31,12 @@ const generate = () => {
     }
   };
 
-  const addItem = (itemInfo) => {
+  const addItem = (itemInfo: SelectorFormatItem) => {
     ungroupedOrder.push(itemInfo);
   };
 
-  const toFormats = () => {
-    const groupItems = Arr.bind(groupOrder, (g) => {
+  const toFormats = (): Array<SelectorMenuItem | SelectorFormatItem> => {
+    const groupItems = Arr.bind(groupOrder, (g): Array<SelectorMenuItem | SelectorFormatItem> => {
       const items = groups[g];
       return items.length === 0 ? [ ] : [{
         title: g,

@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Cell, Obj, Type } from '@ephox/katamari';
 
 /**
@@ -22,7 +15,7 @@ type Primitive = string | number | boolean | Record<string | number, any> | Func
 
 export type TokenisedString = [ string, ...Primitive[] ];
 
-export type Untranslated = Primitive | TokenisedString | RawString;
+export type Untranslated = Primitive | TokenisedString | RawString | null | undefined;
 
 export type TranslatedString = string;
 
@@ -43,7 +36,7 @@ const getData = (): Record<string, Record<string, string>> => Obj.map(data, (val
  * @method setCode
  * @param {String} newCode Current language code.
  */
-const setCode = (newCode: string) => {
+const setCode = (newCode: string): void => {
   if (newCode) {
     currentCode.set(newCode);
   }
@@ -65,7 +58,7 @@ const getCode = (): string => currentCode.get();
  * @param {String} code Language code like sv_SE.
  * @param {Object} items Name/value object where key is english and value is the translation.
  */
-const add = (code: string, items: Record<string, string>) => {
+const add = (code: string, items: Record<string, string>): void => {
   let langData = data[code];
 
   if (!langData) {
@@ -91,15 +84,12 @@ const add = (code: string, items: Record<string, string>) => {
  */
 const translate = (text: Untranslated): TranslatedString => {
   const langData: Record<string, string> = getLanguageData().getOr({});
-  /**
+  /*
    * number - string
    * null, undefined and empty string - empty string
    * array - comma-delimited string
    * object - in [object Object]
    * function - in [object Function]
-   *
-   * @param obj
-   * @returns {string}
    */
   const toString = (obj: Untranslated) => {
     if (Type.isFunction(obj)) {
@@ -145,7 +135,7 @@ const translate = (text: Untranslated): TranslatedString => {
  * @method isRtl
  * @return {Boolean} True if the current language pack is rtl.
  */
-const isRtl = () => getLanguageData()
+const isRtl = (): boolean => getLanguageData()
   .bind((items) => Obj.get(items, '_dir'))
   .exists((dir) => dir === 'rtl');
 
@@ -156,7 +146,7 @@ const isRtl = () => getLanguageData()
  * @param {String} code Code to check for.
  * @return {Boolean} True if the current language pack for the specified code exists.
  */
-const hasCode = (code: string) => Obj.has(data, code);
+const hasCode = (code: string): boolean => Obj.has(data, code);
 
 interface I18n {
   getData: () => Record<string, Record<string, string>>;

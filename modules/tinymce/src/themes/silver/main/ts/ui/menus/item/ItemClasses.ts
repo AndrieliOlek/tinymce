@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Toolbar } from '@ephox/bridge';
 import { Obj } from '@ephox/katamari';
 
@@ -26,7 +19,6 @@ const accessoryClass = 'tox-collection__item-accessory';
 const caretClass = 'tox-collection__item-caret';
 const checkmarkClass = 'tox-collection__item-checkmark';
 const activeClass = 'tox-collection__item--active';
-const iconClassRtl = 'tox-collection__item-icon-rtl';
 
 const containerClass = 'tox-collection__item-container';
 const containerColumnClass = 'tox-collection__item-container--column';
@@ -54,7 +46,6 @@ export {
   accessoryClass,
   caretClass,
   checkmarkClass,
-  iconClassRtl,
   containerClass,
   containerColumnClass,
   containerRowClass,

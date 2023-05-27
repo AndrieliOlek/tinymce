@@ -36,6 +36,9 @@ const parent = (element: SugarElement<Node>): Optional<SugarElement<Node & Paren
 const parentNode = (element: SugarElement<Node>): Optional<SugarElement<Node>> =>
   parent(element) as any;
 
+const parentElement = (element: SugarElement<Node>): Optional<SugarElement<HTMLElement>> =>
+  Optional.from(element.dom.parentElement).map(SugarElement.fromDom);
+
 const findIndex = (element: SugarElement<Node>): Optional<number> =>
   parent(element).bind((p) => {
     // TODO: Refactor out children so we can avoid the constant unwrapping
@@ -74,31 +77,31 @@ const siblings = (element: SugarElement<Node>): SugarElement<Node>[] => {
 const offsetParent = (element: SugarElement<HTMLElement>): Optional<SugarElement<HTMLElement>> =>
   Optional.from(element.dom.offsetParent as HTMLElement).map(SugarElement.fromDom);
 
-const prevSibling = (element: SugarElement<Node>): Optional<SugarElement<ChildNode>> =>
+const prevSibling = (element: SugarElement<Node>): Optional<SugarElement<Node & ChildNode>> =>
   Optional.from(element.dom.previousSibling).map(SugarElement.fromDom);
 
-const nextSibling = (element: SugarElement<Node>): Optional<SugarElement<ChildNode>> =>
+const nextSibling = (element: SugarElement<Node>): Optional<SugarElement<Node & ChildNode>> =>
   Optional.from(element.dom.nextSibling).map(SugarElement.fromDom);
 
 // This one needs to be reversed, so they're still in DOM order
-const prevSiblings = (element: SugarElement<Node>): SugarElement<ChildNode>[] =>
+const prevSiblings = (element: SugarElement<Node>): SugarElement<Node & ChildNode>[] =>
   Arr.reverse(Recurse.toArray(element, prevSibling));
 
-const nextSiblings = (element: SugarElement<Node>): SugarElement<ChildNode>[] =>
+const nextSiblings = (element: SugarElement<Node>): SugarElement<Node & ChildNode>[] =>
   Recurse.toArray(element, nextSibling);
 
-const children = (element: SugarElement<Node>): SugarElement<ChildNode>[] =>
+const children = (element: SugarElement<Node>): SugarElement<Node & ChildNode>[] =>
   Arr.map(element.dom.childNodes, SugarElement.fromDom);
 
-const child = (element: SugarElement<Node>, index: number): Optional<SugarElement<ChildNode>> => {
+const child = (element: SugarElement<Node>, index: number): Optional<SugarElement<Node & ChildNode>> => {
   const cs = element.dom.childNodes;
   return Optional.from(cs[index]).map(SugarElement.fromDom);
 };
 
-const firstChild = (element: SugarElement<Node>): Optional<SugarElement<ChildNode>> =>
+const firstChild = (element: SugarElement<Node>): Optional<SugarElement<Node & ChildNode>> =>
   child(element, 0);
 
-const lastChild = (element: SugarElement<Node>): Optional<SugarElement<ChildNode>> =>
+const lastChild = (element: SugarElement<Node>): Optional<SugarElement<Node & ChildNode>> =>
   child(element, element.dom.childNodes.length - 1);
 
 const childNodesCount = (element: SugarElement<Node>): number =>
@@ -129,6 +132,7 @@ export {
   documentElement,
   parent,
   parentNode,
+  parentElement,
   findIndex,
   parents,
   siblings,

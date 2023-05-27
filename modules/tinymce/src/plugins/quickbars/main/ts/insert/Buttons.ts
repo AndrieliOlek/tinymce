@@ -1,17 +1,10 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import Editor from 'tinymce/core/api/Editor';
 
 import * as Actions from './Actions';
 import * as Conversions from './Conversions';
 import * as Picker from './Picker';
 
-const setupButtons = (editor: Editor) => {
+const setupButtons = (editor: Editor): void => {
   editor.ui.registry.addButton('quickimage', {
     icon: 'image',
     tooltip: 'Insert image',
@@ -32,7 +25,6 @@ const setupButtons = (editor: Editor) => {
     icon: 'table',
     tooltip: 'Insert table',
     onAction: () => {
-      // panel.hide();
       Actions.insertTable(editor, 2, 2);
     }
   });

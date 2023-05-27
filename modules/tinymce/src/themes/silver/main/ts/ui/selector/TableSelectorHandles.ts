@@ -1,21 +1,23 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import {
   AlloyComponent, Attachment, Behaviour, Boxes, Button, DragCoord, Dragging, DraggingTypes, GuiFactory, Memento, Unselecting
 } from '@ephox/alloy';
-import { Arr, Cell, Optional } from '@ephox/katamari';
+import { Arr, Cell, Optional, Singleton } from '@ephox/katamari';
 import { PlatformDetection } from '@ephox/sand';
+import { OtherCells } from '@ephox/snooker';
 import { Compare, Css, SugarElement, SugarPosition, Traverse } from '@ephox/sugar';
 
 import Editor from 'tinymce/core/api/Editor';
+import { EditorEvent } from 'tinymce/core/api/util/EventDispatcher';
 
 interface SnapExtra {
-  td: SugarElement<HTMLTableDataCellElement>;
+  readonly td: SugarElement<HTMLTableCellElement>;
+}
+
+interface TableSelectionChangeEvent {
+  readonly cells: SugarElement<HTMLTableCellElement>[];
+  readonly start: SugarElement<HTMLTableCellElement>;
+  readonly finish: SugarElement<HTMLTableCellElement>;
+  readonly otherCells: Optional<OtherCells.OtherCells>;
 }
 
 const snapWidth = 40;
@@ -35,7 +37,7 @@ const snapOffset = snapWidth / 2;
 //   Insert.append(SugarBody.body(), debugArea);
 // };
 
-const calcSnap = (selectorOpt: Optional<AlloyComponent>, td: SugarElement<HTMLTableDataCellElement>, x: number, y: number, width: number, height: number) => selectorOpt.fold(() => Dragging.snap({
+const calcSnap = (selectorOpt: Optional<AlloyComponent>, td: SugarElement<HTMLTableCellElement>, x: number, y: number, width: number, height: number) => selectorOpt.fold(() => Dragging.snap({
   sensor: DragCoord.absolute(x - snapOffset, y - snapOffset),
   range: SugarPosition(width, height),
   output: DragCoord.absolute(Optional.some(x), Optional.some(y)),
@@ -59,9 +61,10 @@ const calcSnap = (selectorOpt: Optional<AlloyComponent>, td: SugarElement<HTMLTa
   });
 });
 
-const getSnapsConfig = (getSnapPoints: () => DraggingTypes.SnapConfig<SnapExtra>[], cell: Cell<Optional<SugarElement<HTMLTableDataCellElement>>>, onChange: (td: SugarElement<HTMLTableDataCellElement>) => void): DraggingTypes.SnapsConfigSpec<SnapExtra> => {
+const getSnapsConfig = (getSnapPoints: () => DraggingTypes.SnapConfig<SnapExtra>[], cell: Singleton.Value<SugarElement<HTMLTableCellElement>>, onChange: (td: SugarElement<HTMLTableCellElement>) => void): DraggingTypes.SnapsConfigSpec<SnapExtra> => {
   // Can't use Optional.is() here since we need to do a dom compare, not an equality compare
-  const isSameCell = (cellOpt: Optional<SugarElement<HTMLTableDataCellElement>>, td: SugarElement<HTMLTableDataCellElement>) => cellOpt.exists((currentTd) => Compare.eq(currentTd, td));
+  const isSameCell = (cellOpt: Optional<SugarElement<HTMLTableCellElement>>, td: SugarElement<HTMLTableCellElement>) =>
+    cellOpt.exists((currentTd) => Compare.eq(currentTd, td));
 
   return {
     getSnapPoints,
@@ -70,7 +73,7 @@ const getSnapsConfig = (getSnapPoints: () => DraggingTypes.SnapConfig<SnapExtra>
     onSensor: (component, extra) => {
       const td = extra.td;
       if (!isSameCell(cell.get(), td)) {
-        cell.set(Optional.some(td));
+        cell.set(td);
         onChange(td);
       }
     },
@@ -101,14 +104,14 @@ const createSelector = (snaps: DraggingTypes.SnapsConfigSpec<SnapExtra>) => Meme
   })
 );
 
-const setup = (editor: Editor, sink: AlloyComponent) => {
-  const tlTds = Cell<SugarElement<HTMLTableDataCellElement>[]>([]);
-  const brTds = Cell<SugarElement<HTMLTableDataCellElement>[]>([]);
-  const isVisible = Cell<Boolean>(false);
-  const startCell = Cell<Optional<SugarElement<HTMLTableDataCellElement>>>(Optional.none());
-  const finishCell = Cell<Optional<SugarElement<HTMLTableDataCellElement>>>(Optional.none());
+const setup = (editor: Editor, sink: AlloyComponent): void => {
+  const tlTds = Cell<SugarElement<HTMLTableCellElement>[]>([]);
+  const brTds = Cell<SugarElement<HTMLTableCellElement>[]>([]);
+  const isVisible = Cell<boolean>(false);
+  const startCell = Singleton.value<SugarElement<HTMLTableCellElement>>();
+  const finishCell = Singleton.value<SugarElement<HTMLTableCellElement>>();
 
-  const getTopLeftSnap = (td: SugarElement<HTMLTableDataCellElement>) => {
+  const getTopLeftSnap = (td: SugarElement<HTMLTableCellElement>) => {
     const box = Boxes.absolute(td);
     return calcSnap(memTopLeft.getOpt(sink), td, box.x, box.y, box.width, box.height);
   };
@@ -121,7 +124,7 @@ const setup = (editor: Editor, sink: AlloyComponent) => {
     // });
     Arr.map(tlTds.get(), (td) => getTopLeftSnap(td));
 
-  const getBottomRightSnap = (td: SugarElement<HTMLTableDataCellElement>) => {
+  const getBottomRightSnap = (td: SugarElement<HTMLTableCellElement>) => {
     const box = Boxes.absolute(td);
     return calcSnap(memBottomRight.getOpt(sink), td, box.right, box.bottom, box.width, box.height);
   };
@@ -136,13 +139,13 @@ const setup = (editor: Editor, sink: AlloyComponent) => {
 
   const topLeftSnaps = getSnapsConfig(getTopLeftSnaps, startCell, (start) => {
     finishCell.get().each((finish) => {
-      editor.fire('TableSelectorChange', { start, finish });
+      editor.dispatch('TableSelectorChange', { start, finish });
     });
   });
 
   const bottomRightSnaps = getSnapsConfig(getBottomRightSnaps, finishCell, (finish) => {
     startCell.get().each((start) => {
-      editor.fire('TableSelectorChange', { start, finish });
+      editor.dispatch('TableSelectorChange', { start, finish });
     });
   });
 
@@ -152,7 +155,7 @@ const setup = (editor: Editor, sink: AlloyComponent) => {
   const topLeft = GuiFactory.build(memTopLeft.asSpec());
   const bottomRight = GuiFactory.build(memBottomRight.asSpec());
 
-  const showOrHideHandle = (selector: AlloyComponent, cell: SugarElement<HTMLTableDataCellElement>, isAbove: (rect: ClientRect) => boolean, isBelow: (rect: ClientRect, viewportHeight: number) => boolean) => {
+  const showOrHideHandle = (selector: AlloyComponent, cell: SugarElement<HTMLTableCellElement>, isAbove: (rect: DOMRect) => boolean, isBelow: (rect: DOMRect, viewportHeight: number) => boolean) => {
     const cellRect = cell.dom.getBoundingClientRect();
     Css.remove(selector.element, 'display');
     const viewportHeight = Traverse.defaultView(SugarElement.fromDom(editor.getBody())).dom.innerHeight;
@@ -163,30 +166,30 @@ const setup = (editor: Editor, sink: AlloyComponent) => {
     }
   };
 
-  const snapTo = (selector: AlloyComponent, cell: SugarElement<HTMLTableDataCellElement>, getSnapConfig: (cell: SugarElement<HTMLTableDataCellElement>) => DraggingTypes.SnapConfig<SnapExtra>, pos: 'top' | 'bottom') => {
+  const snapTo = (selector: AlloyComponent, cell: SugarElement<HTMLTableCellElement>, getSnapConfig: (cell: SugarElement<HTMLTableCellElement>) => DraggingTypes.SnapConfig<SnapExtra>, pos: 'top' | 'bottom') => {
     const snap = getSnapConfig(cell);
     Dragging.snapTo(selector, snap);
-    const isAbove = (rect: ClientRect) => rect[pos] < 0;
-    const isBelow = (rect: ClientRect, viewportHeight: number) => rect[pos] > viewportHeight;
+    const isAbove = (rect: DOMRect) => rect[pos] < 0;
+    const isBelow = (rect: DOMRect, viewportHeight: number) => rect[pos] > viewportHeight;
     showOrHideHandle(selector, cell, isAbove, isBelow);
   };
 
-  const snapTopLeft = (cell: SugarElement<HTMLTableDataCellElement>) => snapTo(topLeft, cell, getTopLeftSnap, 'top');
+  const snapTopLeft = (cell: SugarElement<HTMLTableCellElement>) => snapTo(topLeft, cell, getTopLeftSnap, 'top');
   const snapLastTopLeft = () => startCell.get().each(snapTopLeft);
 
-  const snapBottomRight = (cell: SugarElement<HTMLTableDataCellElement>) => snapTo(bottomRight, cell, getBottomRightSnap, 'bottom');
+  const snapBottomRight = (cell: SugarElement<HTMLTableCellElement>) => snapTo(bottomRight, cell, getBottomRightSnap, 'bottom');
   const snapLastBottomRight = () => finishCell.get().each(snapBottomRight);
 
   // TODO: Make this work for desktop maybe?
   if (PlatformDetection.detect().deviceType.isTouch()) {
-    editor.on('TableSelectionChange', (e) => {
+    editor.on('TableSelectionChange', (e: EditorEvent<TableSelectionChangeEvent>) => {
       if (!isVisible.get()) {
         Attachment.attach(sink, topLeft);
         Attachment.attach(sink, bottomRight);
         isVisible.set(true);
       }
-      startCell.set(Optional.some(e.start));
-      finishCell.set(Optional.some(e.finish));
+      startCell.set(e.start);
+      finishCell.set(e.finish);
 
       e.otherCells.each((otherCells) => {
         tlTds.set(otherCells.upOrLeftCells);
@@ -208,8 +211,8 @@ const setup = (editor: Editor, sink: AlloyComponent) => {
         Attachment.detach(bottomRight);
         isVisible.set(false);
       }
-      startCell.set(Optional.none());
-      finishCell.set(Optional.none());
+      startCell.clear();
+      finishCell.clear();
     });
   }
 };

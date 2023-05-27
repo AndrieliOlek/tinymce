@@ -1,18 +1,17 @@
 import { Keys, UiFinder, Waiter } from '@ephox/agar';
 import { describe, it } from '@ephox/bedrock-client';
-import { TinyHooks, TinyUiActions } from '@ephox/mcagar';
 import { SugarBody } from '@ephox/sugar';
+import { TinyHooks, TinyUiActions } from '@ephox/wrap-mcagar';
 
 import Editor from 'tinymce/core/api/Editor';
 import Plugin from 'tinymce/plugins/preview/Plugin';
-import Theme from 'tinymce/themes/silver/Theme';
 
 describe('browser.tinymce.plugins.preview.PreviewSanityTest', () => {
   const hook = TinyHooks.bddSetupLight<Editor>({
     plugins: 'preview',
     toolbar: 'preview',
     base_url: '/project/tinymce/js/tinymce'
-  }, [ Theme, Plugin ]);
+  }, [ Plugin ]);
 
   const dialogSelector = 'div[role="dialog"]';
   const docBody = SugarBody.body();
@@ -35,7 +34,7 @@ describe('browser.tinymce.plugins.preview.PreviewSanityTest', () => {
     const editor = hook.editor();
     editor.setContent('<strong>a</strong>');
     await pOpenDialog(editor);
-    TinyUiActions.keydown(editor, Keys.escape());
+    TinyUiActions.keyup(editor, Keys.escape());
     await Waiter.pTryUntil('Dialog should close on esc', () => UiFinder.notExists(docBody, dialogSelector));
   });
 });

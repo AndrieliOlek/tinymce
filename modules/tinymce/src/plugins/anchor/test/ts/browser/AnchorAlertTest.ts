@@ -1,11 +1,10 @@
 import { UiFinder, Waiter } from '@ephox/agar';
 import { describe, it } from '@ephox/bedrock-client';
-import { TinyAssertions, TinyHooks, TinyUiActions } from '@ephox/mcagar';
 import { SugarBody } from '@ephox/sugar';
+import { TinyAssertions, TinyHooks, TinyUiActions } from '@ephox/wrap-mcagar';
 
 import Editor from 'tinymce/core/api/Editor';
 import Plugin from 'tinymce/plugins/anchor/Plugin';
-import Theme from 'tinymce/themes/silver/Theme';
 
 import { pAddAnchor } from '../module/Helpers';
 
@@ -14,7 +13,7 @@ describe('browser.tinymce.plugins.anchor.AnchorAlertTest', () => {
     plugins: 'anchor',
     toolbar: 'anchor',
     base_url: '/project/tinymce/js/tinymce'
-  }, [ Plugin, Theme ]);
+  }, [ Plugin ]);
   const dialogSelector = 'div[role="dialog"].tox-dialog';
   const alertDialogSelector = 'div[role="dialog"].tox-dialog.tox-alert-dialog';
 

@@ -1,6 +1,5 @@
 import { describe, it } from '@ephox/bedrock-client';
 import { Testable } from '@ephox/dispute';
-import Promise from '@ephox/wrap-promise-polyfill';
 import fc from 'fast-check';
 
 import * as Fun from 'ephox/katamari/api/Fun';
@@ -25,7 +24,7 @@ describe('atomic.katamari.ap.async.FutureResultTest', () => {
   }))));
 
   it('fromFuture', () => fc.assert(fc.asyncProperty(fc.integer(), (i) => new Promise((resolve, reject) => {
-    FutureResult.fromFuture<number, unknown>(Future.pure(i)).get((ii) => {
+    FutureResult.fromFuture(Future.pure(i)).get((ii) => {
       eqAsync('eq', Result.value(i), ii, reject, tResult());
       resolve();
     });
@@ -67,7 +66,7 @@ describe('atomic.katamari.ap.async.FutureResultTest', () => {
   }))));
 
   it('value mapResult', () => {
-    const f = (x) => x + 3;
+    const f = (x: number) => x + 3;
     return fc.assert(fc.asyncProperty(fc.integer(), (i) => new Promise((resolve, reject) => {
       FutureResult.value(i).mapResult(f).get((ii) => {
         eqAsync('eq', Result.value(f(i)), ii, reject, tResult());
@@ -91,7 +90,7 @@ describe('atomic.katamari.ap.async.FutureResultTest', () => {
   }))));
 
   it('err mapError', () => {
-    const f = (x) => x + 3;
+    const f = (x: number) => x + 3;
     return fc.assert(fc.asyncProperty(fc.integer(), (i) => new Promise((resolve, reject) => {
       FutureResult.error(i).mapError(f).get((ii) => {
         eqAsync('eq', Result.error(f(i)), ii, reject, tResult());
@@ -101,7 +100,7 @@ describe('atomic.katamari.ap.async.FutureResultTest', () => {
   });
 
   it('value bindFuture value', () => fc.assert(fc.asyncProperty(fc.integer(), (i) => new Promise((resolve, reject) => {
-    const f = (x) => x % 4;
+    const f = (x: number) => x % 4;
     FutureResult.value(i).bindFuture((x) => FutureResult.value(f(x))).get((actual) => {
       eqAsync('bind result', Result.value(f(i)), actual, reject, tResult(tNumber));
       resolve();
@@ -116,7 +115,7 @@ describe('atomic.katamari.ap.async.FutureResultTest', () => {
   }))));
 
   it('error bindFuture', () => fc.assert(fc.asyncProperty(fc.integer(), (i) => new Promise((resolve, reject) => {
-    FutureResult.error(i).bindFuture(Fun.die('should not be called')).get((actual) => {
+    FutureResult.error(i).bindFuture<never>(Fun.die('should not be called')).get((actual) => {
       eqAsync('bind result', Result.error(i), actual, reject, tResult(tNumber));
       resolve();
     });

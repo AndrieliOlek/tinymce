@@ -1,17 +1,16 @@
 import { describe, it } from '@ephox/bedrock-client';
-import { TinyHooks, TinyUiActions } from '@ephox/mcagar';
+import { TinyHooks, TinyUiActions } from '@ephox/wrap-mcagar';
 import { assert } from 'chai';
 
 import Editor from 'tinymce/core/api/Editor';
 import Plugin from 'tinymce/plugins/code/Plugin';
-import Theme from 'tinymce/themes/silver/Theme';
 
 describe('browser.tinymce.plugins.code.CodeTextareaTest', () => {
   const hook = TinyHooks.bddSetupLight<Editor>({
     plugins: 'code',
     toolbar: 'code',
     base_url: '/project/tinymce/js/tinymce'
-  }, [ Plugin, Theme ]);
+  }, [ Plugin ]);
 
   const pOpenDialog = async (editor: Editor) => {
     editor.execCommand('mceCodeEditor');

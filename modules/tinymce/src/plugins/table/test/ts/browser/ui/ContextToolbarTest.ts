@@ -1,19 +1,19 @@
 import { Assertions, FocusTools, Keys, Mouse, UiFinder, Waiter } from '@ephox/agar';
 import { describe, it } from '@ephox/bedrock-client';
 import { Arr } from '@ephox/katamari';
-import { TinyContentActions, TinyDom, TinyHooks, TinySelections, TinyUiActions } from '@ephox/mcagar';
 import { Html, Remove, Replication, SelectorFilter, SugarBody, SugarDocument } from '@ephox/sugar';
+import { TinyContentActions, TinyDom, TinyHooks, TinySelections, TinyState, TinyUiActions } from '@ephox/wrap-mcagar';
 
 import Editor from 'tinymce/core/api/Editor';
 import Plugin from 'tinymce/plugins/table/Plugin';
-import Theme from 'tinymce/themes/silver/Theme';
 
 describe('browser.tinymce.plugins.table.ContextToolbarTest', () => {
   const hook = TinyHooks.bddSetup<Editor>({
     plugins: 'table',
     base_url: '/project/tinymce/js/tinymce'
-  }, [ Plugin, Theme ], true);
+  }, [ Plugin ], true);
 
+  const toolbarSelector = '.tox-toolbar button[aria-label="Table properties"]:not(.tox-tbtn--disabled)';
   const tableHtml = '<table style = "width: 5%;">' +
   '<tbody>' +
     '<tr>' +
@@ -24,7 +24,7 @@ describe('browser.tinymce.plugins.table.ContextToolbarTest', () => {
 
   const pAddTableAndOpenContextToolbar = async (editor: Editor, html: string) => {
     editor.setContent(html);
-    await TinyUiActions.pWaitForUi(editor, '.tox-toolbar button[aria-label="Table properties"]:not(.tox-tbtn--disabled)');
+    await TinyUiActions.pWaitForUi(editor, toolbarSelector);
   };
 
   // Use keyboard shortcut ctrl+F9 to navigate to the context toolbar
@@ -40,8 +40,9 @@ describe('browser.tinymce.plugins.table.ContextToolbarTest', () => {
     TinyUiActions.pWaitForUi(editor, `.tox-pop__dialog ${selector}.tox-tbtn--disabled`);
 
   const pClickOnContextToolbarButton = async (editor: Editor, selector: string) => {
-    const toolbar = await TinyUiActions.pWaitForPopup(editor, '.tox-pop__dialog div');
-    Mouse.clickOn(toolbar, selector);
+    await TinyUiActions.pWaitForPopup(editor, '.tox-pop__dialog .tox-toolbar');
+    const button = UiFinder.findIn(SugarBody.body(), `.tox-pop__dialog ${selector}`).getOrDie();
+    Mouse.click(button);
   };
 
   const assertHtmlStructure = (label: string, editor: Editor, expectedHtml: string) => {
@@ -131,5 +132,22 @@ describe('browser.tinymce.plugins.table.ContextToolbarTest', () => {
 
     await pClickOnContextToolbarButton(editor, 'button[aria-label="Delete table"]');
     assertHtmlStructure('Assert remove table', editor, '<p><br></p>');
+  });
+
+  it('TINY-9664: toolbars should not render if table is in a noneditable host', async () => {
+    const editor = hook.editor();
+    const setupTableSelection = () => {
+      editor.setContent('<table><tbody><tr><td>x</td></tr></tbody></table>');
+      TinySelections.setCursor(editor, [ 0, 0, 0, 0, 0 ], 1);
+      editor.nodeChanged();
+    };
+
+    setupTableSelection();
+    await TinyUiActions.pWaitForUi(editor, toolbarSelector);
+
+    await TinyState.withNoneditableRootEditorAsync(hook.editor(), async () => {
+      setupTableSelection();
+      await Waiter.pTryUntil('Wait for the toolbar to disappear', () => UiFinder.notExists(SugarBody.body(), toolbarSelector));
+    });
   });
 });

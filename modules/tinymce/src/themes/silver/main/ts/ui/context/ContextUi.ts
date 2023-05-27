@@ -1,17 +1,9 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import {
-  AddEventsBehaviour, AlloyComponent, AlloyEvents, AlloySpec, AlloyTriggers, Behaviour, CustomEvent, GuiFactory, InlineView, Keying, NativeEvents
+  AddEventsBehaviour, AlloyComponent, AlloyEvents, AlloySpec, AlloyTriggers, Behaviour, CustomEvent, GuiFactory, InlineView, Keying, NativeEvents,
+  SketchSpec
 } from '@ephox/alloy';
 import { Arr, Cell, Id, Optional, Result } from '@ephox/katamari';
 import { Class, Css, EventArgs, Focus, SugarElement, SugarShadowDom, Width } from '@ephox/sugar';
-
-import Delay from 'tinymce/core/api/util/Delay';
 
 const forwardSlideEvent = Id.generate('forward-slide');
 export interface ForwardSlideEvent extends CustomEvent {
@@ -29,8 +21,8 @@ export interface ChangeSlideEvent extends CustomEvent {
 
 const resizingClass = 'tox-pop--resizing';
 
-const renderContextToolbar = (spec: { onEscape: () => Optional<boolean>; sink: AlloyComponent }) => {
-  const stack = Cell([ ]);
+const renderContextToolbar = (spec: { onEscape: () => Optional<boolean>; sink: AlloyComponent }): SketchSpec => {
+  const stack = Cell<Array<{ bar: AlloyComponent; focus: Optional<SugarElement<HTMLElement>> }>>([ ]);
 
   return InlineView.sketch({
     dom: {
@@ -52,9 +44,11 @@ const renderContextToolbar = (spec: { onEscape: () => Optional<boolean>; sink: A
 
     inlineBehaviours: Behaviour.derive([
       AddEventsBehaviour.config('context-toolbar-events', [
-        AlloyEvents.runOnSource<EventArgs>(NativeEvents.transitionend(), (comp, _se) => {
-          Class.remove(comp.element, resizingClass);
-          Css.remove(comp.element, 'width');
+        AlloyEvents.runOnSource<EventArgs<TransitionEvent>>(NativeEvents.transitionend(), (comp, se) => {
+          if (se.event.raw.propertyName === 'width') {
+            Class.remove(comp.element, resizingClass);
+            Css.remove(comp.element, 'width');
+          }
         }),
 
         AlloyEvents.run<ChangeSlideEvent>(changeSlideEvent, (comp, se) => {
@@ -76,7 +70,7 @@ const renderContextToolbar = (spec: { onEscape: () => Optional<boolean>; sink: A
               return Focus.active(SugarShadowDom.getRootNode(elem));
             });
           });
-          Delay.setTimeout(() => {
+          setTimeout(() => {
             Css.set(comp.element, 'width', newWidth + 'px');
           }, 0);
         }),

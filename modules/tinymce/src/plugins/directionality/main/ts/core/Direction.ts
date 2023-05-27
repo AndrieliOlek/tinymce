@@ -1,28 +1,61 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
+import { Arr, Optional } from '@ephox/katamari';
+import { Traverse, Attribute, SugarElement, SugarNode, SelectorFind, Direction, SelectorFilter } from '@ephox/sugar';
 
+import DOMUtils from 'tinymce/core/api/dom/DOMUtils';
 import Editor from 'tinymce/core/api/Editor';
-import Tools from 'tinymce/core/api/util/Tools';
 
-const setDir = (editor: Editor, dir: string) => {
-  const dom = editor.dom;
-  let curDir;
-  const blocks = editor.selection.getSelectedBlocks();
+type Dir = 'rtl' | 'ltr';
 
-  if (blocks.length) {
-    curDir = dom.getAttrib(blocks[0], 'dir');
+const getParentElement = (element: SugarElement<Element>): Optional<SugarElement<Element>> =>
+  Traverse.parent(element).filter(SugarNode.isElement);
 
-    Tools.each(blocks, (block) => {
-      // Add dir to block if the parent block doesn't already have that dir
-      if (!dom.getParent(block.parentNode, '*[dir="' + dir + '"]', dom.getRoot())) {
-        dom.setAttrib(block, 'dir', curDir !== dir ? dir : null);
+// if the block is a list item, we need to get the parent of the list itself
+const getNormalizedBlock = (element: SugarElement<Element>, isListItem: boolean): SugarElement<Element> => {
+  const normalizedElement = isListItem ? SelectorFind.ancestor(element, 'ol,ul') : Optional.some(element);
+  return normalizedElement.getOr(element);
+};
+
+const isListItem = SugarNode.isTag('li');
+
+const setDirOnElements = (dom: DOMUtils, blocks: Element[], dir: Dir): void => {
+  Arr.each(blocks, (block) => {
+    const blockElement = SugarElement.fromDom(block);
+    const isBlockElementListItem = isListItem(blockElement);
+    const normalizedBlock = getNormalizedBlock(blockElement, isBlockElementListItem);
+    const normalizedBlockParent = getParentElement(normalizedBlock);
+    normalizedBlockParent.each((parent) => {
+      // TINY-9314: Remove any inline direction style to ensure that it is only set when necessary and that
+      // the dir attribute is favored
+      dom.setStyle(normalizedBlock.dom, 'direction', null);
+
+      const parentDirection = Direction.getDirection(parent);
+      if (parentDirection === dir) {
+        Attribute.remove(normalizedBlock, 'dir');
+      } else {
+        Attribute.set(normalizedBlock, 'dir', dir);
+      }
+
+      // TINY-9314: Set an inline direction style if computed css direction is still not as desired. This can
+      // happen when the direction style is derived from a stylesheet.
+      if (Direction.getDirection(normalizedBlock) !== dir) {
+        dom.setStyle(normalizedBlock.dom, 'direction', dir);
+      }
+
+      // Remove dir attr and direction style from list children
+      if (isBlockElementListItem) {
+        const listItems = SelectorFilter.children(normalizedBlock, 'li[dir],li[style]');
+        Arr.each(listItems, (listItem) => {
+          Attribute.remove(listItem, 'dir');
+          dom.setStyle(listItem.dom, 'direction', null);
+        });
       }
     });
+  });
+};
 
+const setDir = (editor: Editor, dir: Dir): void => {
+  if (editor.selection.isEditable()) {
+    setDirOnElements(editor.dom, editor.selection.getSelectedBlocks(), dir);
     editor.nodeChanged();
   }
 };

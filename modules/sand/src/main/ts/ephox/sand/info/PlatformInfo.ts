@@ -1,9 +1,10 @@
 import { Fun, Strings } from '@ephox/katamari';
 
 export interface PlatformInfo {
-  name: string;
-  versionRegexes: RegExp[];
-  search: (uastring: string) => boolean;
+  readonly name: string;
+  readonly versionRegexes: RegExp[];
+  readonly search: (uastring: string) => boolean;
+  readonly brand?: string;
 }
 
 const normalVersionRegex = /.*?version\/\ ?([0-9]+)\.([0-9]+).*/;
@@ -15,6 +16,7 @@ const checkContains = (target: string) => {
 };
 
 const browsers: PlatformInfo[] = [
+  // This is legacy Edge
   {
     name: 'Edge',
     versionRegexes: [ /.*?edge\/ ?([0-9]+)\.([0-9]+)$/ ],
@@ -22,8 +24,10 @@ const browsers: PlatformInfo[] = [
       return Strings.contains(uastring, 'edge/') && Strings.contains(uastring, 'chrome') && Strings.contains(uastring, 'safari') && Strings.contains(uastring, 'applewebkit');
     }
   },
+  // This is Google Chrome and Chromium Edge
   {
-    name: 'Chrome',
+    name: 'Chromium',
+    brand: 'Chromium',
     versionRegexes: [ /.*?chrome\/([0-9]+)\.([0-9]+).*/, normalVersionRegex ],
     search: (uastring) => {
       return Strings.contains(uastring, 'chrome') && !Strings.contains(uastring, 'chromeframe');
@@ -75,7 +79,7 @@ const oses: PlatformInfo[] = [
     versionRegexes: [ /.*?android\ ?([0-9]+)\.([0-9]+).*/ ]
   },
   {
-    name: 'OSX',
+    name: 'macOS',
     search: checkContains('mac os x'),
     versionRegexes: [ /.*?mac\ os\ x\ ?([0-9]+)_([0-9]+).*/ ]
   },

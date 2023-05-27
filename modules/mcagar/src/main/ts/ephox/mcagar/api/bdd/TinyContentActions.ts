@@ -1,4 +1,4 @@
-import { Keyboard } from '@ephox/agar';
+import { Keyboard, Mouse } from '@ephox/agar';
 
 import { Editor } from '../../alien/EditorTypes';
 import * as TypeText from '../../keyboard/TypeText';
@@ -19,10 +19,46 @@ const keystroke = (editor: Editor, keyvalue: number, modifiers: Keyboard.KeyModi
 const type = (editor: Editor, content: string): void =>
   TypeText.typeContentAtSelection(TinyDom.document(editor), content);
 
+const trueClick = (editor: Editor): void =>
+  Mouse.trueClick(TinyDom.body(editor));
+
+const trueClickOn = (editor: Editor, selector: string): void =>
+  Mouse.trueClickOn(TinyDom.body(editor), selector);
+
+const pWaitForEventToStopFiring = (editor: Editor, eventName: string, timing: { delay: number; timeout: number }): Promise<void> =>
+  new Promise((resolve, reject) => {
+    const startTime = Date.now();
+    let timer: number | undefined;
+    const onEditorEvent = () => {
+      const currentTime = Date.now();
+      if (currentTime - startTime > timing.timeout) {
+        editor.off(eventName, onEditorEvent);
+        reject(
+          `It took too long (${currentTime - startTime} ms) to stop receiving ${eventName} events. Max timeout was: ${timing.timeout} ms.`
+        );
+      } else {
+        if (timer !== undefined) {
+          clearTimeout(timer);
+        }
+
+        timer = setTimeout(() => {
+          editor.off(eventName, onEditorEvent);
+          resolve();
+        }, timing.delay);
+      }
+    };
+
+    editor.on(eventName, onEditorEvent);
+    onEditorEvent();
+  });
+
 export {
   keydown,
   keypress,
   keystroke,
   keyup,
-  type
+  type,
+  trueClick,
+  trueClickOn,
+  pWaitForEventToStopFiring
 };

@@ -1,7 +1,6 @@
-import { Cell, Id, Optional } from '@ephox/katamari';
+import { Id, Singleton } from '@ephox/katamari';
 import { Traverse } from '@ephox/sugar';
 
-import * as AriaDescribe from '../../aria/AriaDescribe';
 import * as AriaLabel from '../../aria/AriaLabel';
 import * as AlloyParts from '../../parts/AlloyParts';
 import * as ModalDialogSchema from '../../ui/schema/ModalDialogSchema';
@@ -24,11 +23,11 @@ import { CompositeSketchFactory } from './UiSketcher';
 
 const factory: CompositeSketchFactory<ModalDialogDetail, ModalDialogSpec> = (detail, components, spec, externals) => {
 
-  const dialogComp = Cell(Optional.none<AlloyComponent>());
+  const dialogComp = Singleton.value<AlloyComponent>();
 
   // TODO IMPROVEMENT: Make close actually close the dialog by default!
   const showDialog = (dialog: AlloyComponent) => {
-    dialogComp.set(Optional.some(dialog));
+    dialogComp.set(dialog);
     const sink = detail.lazySink(dialog).getOrDie();
 
     const externalBlocker = externals.blocker();
@@ -54,7 +53,7 @@ const factory: CompositeSketchFactory<ModalDialogDetail, ModalDialogSpec> = (det
   };
 
   const hideDialog = (dialog: AlloyComponent) => {
-    dialogComp.set(Optional.none());
+    dialogComp.clear();
     Traverse.parent(dialog.element).each((blockerDom) => {
       dialog.getSystem().getByDom(blockerDom).each((blocker) => {
         Attachment.detach(blocker);
@@ -107,7 +106,8 @@ const factory: CompositeSketchFactory<ModalDialogDetail, ModalDialogSpec> = (det
           mode: 'cyclic',
           onEnter: detail.onExecute,
           onEscape: detail.onEscape,
-          useTabstopAt: detail.useTabstopAt
+          useTabstopAt: detail.useTabstopAt,
+          firstTabstop: detail.firstTabstop
         }),
         Blocking.config({
           getRoot: dialogComp.get
@@ -115,7 +115,6 @@ const factory: CompositeSketchFactory<ModalDialogDetail, ModalDialogSpec> = (det
         AddEventsBehaviour.config(modalEventsId, [
           AlloyEvents.runOnAttached((c) => {
             AriaLabel.labelledBy(c.element, AlloyParts.getPartOrDie(c, detail, 'title').element);
-            AriaDescribe.describedBy(c.element, AlloyParts.getPartOrDie(c, detail, 'body').element);
           })
         ])
       ]

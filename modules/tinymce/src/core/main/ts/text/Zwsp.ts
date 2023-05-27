@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Unicode } from '@ephox/katamari';
 
 /**
@@ -14,8 +7,8 @@ import { Unicode } from '@ephox/katamari';
  * @private
  * @class tinymce.text.Zwsp
  * @example
- * var isZwsp = Zwsp.isZwsp('\uFEFF');
- * var abc = Zwsp.trim('a\uFEFFc');
+ * const isZwsp = Zwsp.isZwsp('\uFEFF');
+ * const abc = Zwsp.trim('a\uFEFFc');
  */
 
 // This is technically not a ZWSP but a ZWNBSP or a BYTE ORDER MARK it used to be a ZWSP

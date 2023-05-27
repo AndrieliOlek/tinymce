@@ -1,10 +1,9 @@
 ﻿import { Assertions } from '@ephox/agar';
 import { after, before, describe, it } from '@ephox/bedrock-client';
-import { TinyHooks, TinyUiActions } from '@ephox/mcagar';
 import { Insert, Remove, SugarBody, SugarElement } from '@ephox/sugar';
+import { TinyHooks, TinyUiActions } from '@ephox/wrap-mcagar';
 
 import Editor from 'tinymce/core/api/Editor';
-import Theme from 'tinymce/themes/silver/Theme';
 
 describe('browser.tinymce.themes.silver.editor.SilverFixedToolbarContainerTargetNotInlineTest', () => {
   const toolbar: SugarElement<HTMLDivElement> = SugarElement.fromHtml('<div style="margin: 50px 0;"></div>');
@@ -22,7 +21,7 @@ describe('browser.tinymce.themes.silver.editor.SilverFixedToolbarContainerTarget
     menubar: 'file',
     toolbar: 'undo bold',
     base_url: '/project/tinymce/js/tinymce'
-  }, [ Theme ]);
+  }, []);
 
   it('Check fixed_toolbar_container_target setting is ignored when not an inline editor', async () => {
     const editor = hook.editor();

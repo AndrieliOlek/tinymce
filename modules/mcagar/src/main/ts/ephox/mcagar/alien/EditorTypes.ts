@@ -1,10 +1,11 @@
 type EventCallback = (event: any) => void;
 
-export interface Selection {
+export interface EditorSelection {
   win: Window;
 
   setRng: (rng: Range) => void;
   getRng: () => Range | null;
+  getSel: () => Selection | null;
   select: (node: Node, content?: boolean) => Node;
   setCursorLocation: (node?: Node, offset?: number) => void;
   isCollapsed: () => boolean;
@@ -15,7 +16,7 @@ export type ContentFormat = 'raw' | 'text' | 'html' | 'tree';
 export interface GetContentArgs {
   format?: ContentFormat;
   get?: boolean;
-  content?: string;
+  content?: any;
   getInner?: boolean;
   no_events?: boolean;
   [key: string]: any;
@@ -23,12 +24,13 @@ export interface GetContentArgs {
 
 export interface Editor {
   id: string;
-  settings: Record<string, any>;
+  settings?: Record<string, any>;
+  options?: any;
   inline: boolean;
 
   dom: any;
   editorCommands: any;
-  selection: Selection;
+  selection: EditorSelection;
   windowManager: any;
   ui: {
     registry: any;

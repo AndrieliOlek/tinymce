@@ -1,30 +1,28 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
+import { Type } from '@ephox/katamari';
 
 import Editor from 'tinymce/core/api/Editor';
 import { StyleMap } from 'tinymce/core/api/html/Styles';
-import Promise from 'tinymce/core/api/util/Promise';
-import XHR from 'tinymce/core/api/util/XHR';
+import URI from 'tinymce/core/api/util/URI';
 
-import * as Settings from '../api/Settings';
+import * as Options from '../api/Options';
+import { UserListItem } from '../ui/DialogTypes';
 import { ImageData } from './ImageData';
 
 export interface ImageDimensions {
-  width: number;
-  height: number;
+  readonly width: number;
+  readonly height: number;
 }
 
 // TODO: Figure out if these would ever be something other than numbers. This was added in: #TINY-1350
-const parseIntAndGetMax = (val1: any, val2: any) => Math.max(parseInt(val1, 10), parseInt(val2, 10));
+const parseIntAndGetMax = (val1: any, val2: any): number =>
+  Math.max(parseInt(val1, 10), parseInt(val2, 10));
 
 const getImageSize = (url: string): Promise<ImageDimensions> => new Promise((callback) => {
   const img = document.createElement('img');
 
-  const done = (dimensions: Promise<ImageDimensions>) => {
+  const done = (dimensions: Promise<ImageDimensions>): void => {
+    img.onload = img.onerror = null;
+
     if (img.parentNode) {
       img.parentNode.removeChild(img);
     }
@@ -67,7 +65,7 @@ const addPixelSuffix = (value: string): string => {
   return value;
 };
 
-const mergeMargins = (css: StyleMap) => {
+const mergeMargins = (css: StyleMap): StyleMap => {
   if (css.margin) {
     const splitMargin = String(css.margin).split(' ');
 
@@ -104,25 +102,25 @@ const mergeMargins = (css: StyleMap) => {
 };
 
 // TODO: Input on this callback should really be validated
-const createImageList = (editor: Editor, callback: (imageList: any) => void) => {
-  const imageList = Settings.getImageList(editor);
+const createImageList = (editor: Editor, callback: (imageList: false | UserListItem[]) => void): void => {
+  const imageList = Options.getImageList(editor);
 
-  if (typeof imageList === 'string') {
-    XHR.send({
-      url: imageList,
-      success: (text) => {
-        callback(JSON.parse(text));
-      }
-    });
-  } else if (typeof imageList === 'function') {
+  if (Type.isString(imageList)) {
+    fetch(imageList)
+      .then((res) => {
+        if (res.ok) {
+          res.json().then(callback);
+        }
+      });
+  } else if (Type.isFunction(imageList)) {
     imageList(callback);
   } else {
     callback(imageList);
   }
 };
 
-const waitLoadImage = (editor: Editor, data: ImageData, imgElm: HTMLElement) => {
-  const selectImage = () => {
+const waitLoadImage = (editor: Editor, data: ImageData, imgElm: HTMLElement): void => {
+  const selectImage = (): void => {
     imgElm.onload = imgElm.onerror = null;
 
     if (editor.selection) {
@@ -132,7 +130,7 @@ const waitLoadImage = (editor: Editor, data: ImageData, imgElm: HTMLElement) => 
   };
 
   imgElm.onload = () => {
-    if (!data.width && !data.height && Settings.hasDimensions(editor)) {
+    if (!data.width && !data.height && Options.hasDimensions(editor)) {
       editor.dom.setAttribs(imgElm, {
         width: String(imgElm.clientWidth),
         height: String(imgElm.clientHeight)
@@ -145,18 +143,28 @@ const waitLoadImage = (editor: Editor, data: ImageData, imgElm: HTMLElement) => 
   imgElm.onerror = selectImage;
 };
 
-const blobToDataUri = (blob: Blob) => new Promise<string>((resolve, reject) => {
+const blobToDataUri = (blob: Blob): Promise<string> => new Promise((resolve, reject) => {
   const reader = new FileReader();
   reader.onload = () => {
     resolve(reader.result as string);
   };
   reader.onerror = () => {
-    reject(reader.error.message);
+    reject(reader.error?.message);
   };
   reader.readAsDataURL(blob);
 });
 
-const isPlaceholderImage = (imgElm: Element): boolean => imgElm.nodeName === 'IMG' && (imgElm.hasAttribute('data-mce-object') || imgElm.hasAttribute('data-mce-placeholder'));
+const isPlaceholderImage = (imgElm: Element): imgElm is HTMLImageElement =>
+  imgElm.nodeName === 'IMG' && (imgElm.hasAttribute('data-mce-object') || imgElm.hasAttribute('data-mce-placeholder'));
+
+const isSafeImageUrl = (editor: Editor, src: string): boolean => {
+  const getOption = editor.options.get;
+  return URI.isDomSafe(src, 'img', {
+    allow_html_data_urls: getOption('allow_html_data_urls'),
+    allow_script_urls: getOption('allow_script_urls'),
+    allow_svg_data_urls: getOption('allow_svg_data_urls')
+  });
+};
 
 export {
   getImageSize,
@@ -166,5 +174,6 @@ export {
   createImageList,
   waitLoadImage,
   blobToDataUri,
-  isPlaceholderImage
+  isPlaceholderImage,
+  isSafeImageUrl
 };

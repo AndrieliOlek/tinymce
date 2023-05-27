@@ -1,5 +1,4 @@
 import { describe, it } from '@ephox/bedrock-client';
-import Promise from '@ephox/wrap-promise-polyfill';
 import { assert } from 'chai';
 
 import * as Throttler from 'ephox/katamari/api/Throttler';
@@ -10,7 +9,7 @@ describe('atomic.katamari.api.fun.ThrottlerTest', () => {
     const data: string[] = [];
     const throttler = Throttler.adaptable((value: string) => {
       data.push(value);
-    }, 250);
+    }, 100);
 
     throttler.throttle('cat');
     throttler.throttle('dog');
@@ -24,15 +23,32 @@ describe('atomic.katamari.api.fun.ThrottlerTest', () => {
       setTimeout(() => {
         assert.deepEqual(data, [ 'frog', 'goose' ]);
         success();
-      }, 500);
-    }, 500);
+      }, 200);
+    }, 200);
+  }));
+
+  it('Throttler.adaptable can throttle within the callback function', () => new Promise<void>((success) => {
+    const data: string[] = [];
+    const throttler = Throttler.adaptable((value: string) => {
+      data.push(value);
+      if (value === 'retry') {
+        throttler.throttle('retried');
+      }
+    }, 75);
+
+    throttler.throttle('retry');
+
+    setTimeout(() => {
+      assert.deepEqual(data, [ 'retry', 'retried' ]);
+      success();
+    }, 250);
   }));
 
   it('Throttler.first', () => new Promise<void>((success) => {
     const data: string[] = [];
     const throttler = Throttler.first((value: string) => {
       data.push(value);
-    }, 250);
+    }, 100);
 
     throttler.throttle('cat');
     throttler.throttle('dog');
@@ -46,15 +62,15 @@ describe('atomic.katamari.api.fun.ThrottlerTest', () => {
       setTimeout(() => {
         assert.deepEqual(data, [ 'cat', 'frog-goose' ]);
         success();
-      }, 500);
-    }, 500);
+      }, 200);
+    }, 200);
   }));
 
   it('Throttler.last', () => new Promise<void>((success) => {
     const data: string[] = [];
     const throttler = Throttler.last((value: string) => {
       data.push(value);
-    }, 250);
+    }, 100);
 
     throttler.throttle('cat');
     throttler.throttle('dog');
@@ -68,7 +84,7 @@ describe('atomic.katamari.api.fun.ThrottlerTest', () => {
       setTimeout(() => {
         assert.deepEqual(data, [ 'frog', 'goose' ]);
         success();
-      }, 500);
-    }, 500);
+      }, 200);
+    }, 200);
   }));
 });

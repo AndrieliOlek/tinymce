@@ -1,10 +1,9 @@
-import { beforeEach, describe, it } from '@ephox/bedrock-client';
-import { LegacyUnit, TinyAssertions, TinyHooks } from '@ephox/mcagar';
+import { beforeEach, context, describe, it } from '@ephox/bedrock-client';
+import { LegacyUnit, TinyAssertions, TinyHooks, TinySelections } from '@ephox/wrap-mcagar';
 import { assert } from 'chai';
 
 import Editor from 'tinymce/core/api/Editor';
 import Plugin from 'tinymce/plugins/lists/Plugin';
-import Theme from 'tinymce/themes/silver/Theme';
 
 describe('browser.tinymce.plugins.lists.IndentTest', () => {
   const hook = TinyHooks.bddSetupLight<Editor>({
@@ -22,7 +21,7 @@ describe('browser.tinymce.plugins.lists.IndentTest', () => {
         'margin-bottom,margin-left,display,position,top,left,list-style-type'
     },
     base_url: '/project/tinymce/js/tinymce'
-  }, [ Plugin, Theme ]);
+  }, [ Plugin ]);
 
   beforeEach(() => {
     hook.editor().focus();
@@ -112,7 +111,7 @@ describe('browser.tinymce.plugins.lists.IndentTest', () => {
       '</ol>'
     );
 
-    LegacyUnit.setSelection(editor, 'li:last', 0);
+    LegacyUnit.setSelection(editor, 'li:last-of-type', 0);
     editor.execCommand('Indent');
 
     TinyAssertions.assertContent(editor,
@@ -173,7 +172,7 @@ describe('browser.tinymce.plugins.lists.IndentTest', () => {
       '</ol>'
     );
 
-    LegacyUnit.setSelection(editor, 'li:last', 1);
+    LegacyUnit.setSelection(editor, 'li:nth-child(2)', 1);
     editor.execCommand('Indent');
 
     TinyAssertions.assertContent(editor,
@@ -297,7 +296,7 @@ describe('browser.tinymce.plugins.lists.IndentTest', () => {
       '</ul>'
     );
 
-    LegacyUnit.setSelection(editor, 'li:nth-child(2)', 0, 'li:last', 0);
+    LegacyUnit.setSelection(editor, 'li:nth-child(2)', 0, 'li:last-of-type', 0);
     editor.execCommand('Indent');
 
     TinyAssertions.assertContent(editor,
@@ -448,5 +447,44 @@ describe('browser.tinymce.plugins.lists.IndentTest', () => {
     );
 
     assert.equal(editor.selection.getNode().nodeName, 'LI');
+  });
+
+  context('Parent context', () => {
+    const testCommandAtTextPath = (command: string) => (inputHtml: string, path: number[], expectedHtml: string) => () => {
+      const editor = hook.editor();
+      editor.setContent(inputHtml);
+
+      TinySelections.setCursor(editor, path, 0);
+      editor.execCommand(command);
+
+      TinyAssertions.assertContent(editor, expectedHtml);
+    };
+
+    const testIndentAtTextPath = testCommandAtTextPath('Indent');
+    const testOutdentAtTextPath = testCommandAtTextPath('Outdent');
+
+    it('TINY-7209: indent list item inside div inside list item', testIndentAtTextPath(
+      '<ul><li>A<div><ul><li>B</li><li>C</li></ul></div></li><li>D</li></ul>',
+      [ 0, 0, 1, 0, 0, 0 ],
+      '<ul><li>A<div><ul><li style="list-style-type: none;"><ul><li>B</li></ul></li><li>C</li></ul></div></li><li>D</li></ul>'
+    ));
+
+    it('TINY-7209: indent list item with a paragraph inside div inside a list item', testIndentAtTextPath(
+      '<ul><li>A<div><ul><li><p>B</p></li><li>C</li></ul></div></li><li>D</li></ul>',
+      [ 0, 0, 1, 0, 0, 0, 0 ],
+      '<ul><li>A<div><ul><li style="list-style-type: none;"><ul><li><p>B</p></li></ul></li><li>C</li></ul></div></li><li>D</li></ul>'
+    ));
+
+    it('TINY-7209: outdent list item inside a div inside a list item', testOutdentAtTextPath(
+      '<ul><li>A<div><ul><li>B</li><li>C</li></ul></div></li><li>D</li></ul>',
+      [ 0, 0, 1, 0, 0, 0 ],
+      '<ul><li>A<div><p>B</p><ul><li>C</li></ul></div></li><li>D</li></ul>'
+    ));
+
+    it('TINY-7209: outdent list item with a paragraph inside div inside a list item', testOutdentAtTextPath(
+      '<ul><li>A<div><ul><li><p>B</p></li><li>C</li></ul></div></li><li>D</li></ul>',
+      [ 0, 0, 1, 0, 0, 0 ],
+      '<ul><li>A<div><p>B</p><ul><li>C</li></ul></div></li><li>D</li></ul>'
+    ));
   });
 });

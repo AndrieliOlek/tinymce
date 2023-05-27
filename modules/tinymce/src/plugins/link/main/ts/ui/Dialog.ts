@@ -1,16 +1,9 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Arr, Fun, Optional, Optionals } from '@ephox/katamari';
 
 import Editor from 'tinymce/core/api/Editor';
 import { Dialog } from 'tinymce/core/api/ui/Ui';
 
-import * as Settings from '../api/Settings';
+import * as Options from '../api/Options';
 import { ListOptions } from '../core/ListOptions';
 import * as Utils from '../core/Utils';
 import { DialogChanges } from './DialogChanges';
@@ -18,7 +11,7 @@ import { DialogConfirms } from './DialogConfirms';
 import { DialogInfo } from './DialogInfo';
 import { LinkDialogData, LinkDialogInfo, LinkDialogKey } from './DialogTypes';
 
-const handleSubmit = (editor: Editor, info: LinkDialogInfo) => (api: Dialog.DialogInstanceApi<LinkDialogData>) => {
+const handleSubmit = (editor: Editor, info: LinkDialogInfo) => (api: Dialog.DialogInstanceApi<LinkDialogData>): void => {
   const data: LinkDialogData = api.getData();
 
   if (!data.url.value) {
@@ -53,8 +46,8 @@ const handleSubmit = (editor: Editor, info: LinkDialogInfo) => (api: Dialog.Dial
   api.close();
 };
 
-const collectData = (editor): Promise<LinkDialogInfo> => {
-  const anchorNode: HTMLAnchorElement = Utils.getAnchorElement(editor);
+const collectData = (editor: Editor): Promise<LinkDialogInfo> => {
+  const anchorNode = Utils.getAnchorElement(editor);
   return DialogInfo.collect(editor, anchorNode);
 };
 
@@ -81,7 +74,7 @@ const getInitialData = (info: LinkDialogInfo, defaultTarget: Optional<string>): 
   };
 };
 
-const makeDialog = (settings: LinkDialogInfo, onSubmit, editor: Editor): Dialog.DialogSpec<LinkDialogData> => {
+const makeDialog = (settings: LinkDialogInfo, onSubmit: (api: Dialog.DialogInstanceApi<LinkDialogData>) => void, editor: Editor): Dialog.DialogSpec<LinkDialogData> => {
 
   const urlInput: Dialog.UrlInputSpec[] = [
     {
@@ -108,7 +101,7 @@ const makeDialog = (settings: LinkDialogInfo, onSubmit, editor: Editor): Dialog.
     }
   ] : [];
 
-  const defaultTarget: Optional<string> = Optional.from(Settings.getDefaultLinkTarget(editor));
+  const defaultTarget: Optional<string> = Optional.from(Options.getDefaultLinkTarget(editor));
 
   const initialData = getInitialData(settings, defaultTarget);
   const catalogs = settings.catalogs;
@@ -156,7 +149,7 @@ const makeDialog = (settings: LinkDialogInfo, onSubmit, editor: Editor): Dialog.
   };
 };
 
-const open = (editor: Editor) => {
+const open = (editor: Editor): void => {
   const data = collectData(editor);
   data.then((info) => {
     const onSubmit = handleSubmit(editor, info);

@@ -1,13 +1,12 @@
 import { UiFinder, Waiter } from '@ephox/agar';
 import { before, describe, it } from '@ephox/bedrock-client';
 import { Arr } from '@ephox/katamari';
-import { McEditor, TinyUiActions } from '@ephox/mcagar';
 import { SugarBody } from '@ephox/sugar';
+import { McEditor, TinyUiActions } from '@ephox/wrap-mcagar';
 import { assert } from 'chai';
 
 import Editor from 'tinymce/core/api/Editor';
 import Plugin from 'tinymce/plugins/emoticons/Plugin';
-import Theme from 'tinymce/themes/silver/Theme';
 
 const getFilename = (url: string) => {
   const m = /([^\/\\]+)$/.exec(url);
@@ -20,7 +19,6 @@ const getFilename = (url: string) => {
 describe('browser.tinymce.plugins.emoticons.DifferentEmojiDatabaseTest', () => {
   before(() => {
     Plugin();
-    Theme();
   });
 
   const pTestEditorWithSettings = async (categories: string[], databaseUrl: string) => {

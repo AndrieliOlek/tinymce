@@ -1,22 +1,20 @@
-import { Cursors, PhantomSkipper, Waiter } from '@ephox/agar';
+import { Cursors, Waiter } from '@ephox/agar';
 import { beforeEach, context, describe, it } from '@ephox/bedrock-client';
-import { TinyDom, TinyHooks } from '@ephox/mcagar';
 import { Scroll, SugarLocation, SugarPosition } from '@ephox/sugar';
+import { TinyDom, TinyHooks } from '@ephox/wrap-mcagar';
 import { assert } from 'chai';
 
 import Editor from 'tinymce/core/api/Editor';
 import * as ScrollIntoView from 'tinymce/core/dom/ScrollIntoView';
-import Theme from 'tinymce/themes/silver/Theme';
 
 describe('browser.tinymce.themes.silver.editor.header.StickyHeaderScrollIntoViewTest', () => {
-  PhantomSkipper.bddSetup();
 
   const hook = TinyHooks.bddSetup<Editor>({
     add_unload_trigger: false,
     inline: true,
     base_url: '/project/tinymce/js/tinymce',
     content_style: 'body.mce-content-body, .mce-content-body p { margin: 0 }'
-  }, [ Theme ], true);
+  }, [], true);
 
   const scrollReset = (editor: Editor) => {
     editor.getWin().scrollTo(0, 0);
@@ -50,7 +48,7 @@ describe('browser.tinymce.themes.silver.editor.header.StickyHeaderScrollIntoView
     assert.approximately(actualY, y, 5, `Scroll position Y should be expected value: ${y} got ${actualY}`);
   };
 
-  const headerHeight = 79;
+  const headerHeight = 85;
   let initialContainerPos: SugarPosition;
   let expectedSecondParaScrollBottomPos: number;
   let expectedSecondParaScrollTopPos: number;

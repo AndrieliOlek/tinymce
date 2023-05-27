@@ -1,15 +1,13 @@
 import { Fun } from '@ephox/katamari';
 
-import { UaString } from '../detect/UaString';
 import { Version } from '../detect/Version';
+import { UaInfo } from '../info/UaInfo';
 
-export interface OperatingSystem {
-  readonly current: string | undefined;
-  readonly version: Version;
+export interface OperatingSystem extends UaInfo {
   readonly isWindows: () => boolean;
   readonly isiOS: () => boolean;
   readonly isAndroid: () => boolean;
-  readonly isOSX: () => boolean;
+  readonly isMacOS: () => boolean;
   readonly isLinux: () => boolean;
   readonly isSolaris: () => boolean;
   readonly isFreeBSD: () => boolean;
@@ -20,7 +18,7 @@ const windows = 'Windows';
 const ios = 'iOS';
 const android = 'Android';
 const linux = 'Linux';
-const osx = 'OSX';
+const macos = 'macOS';
 const solaris = 'Solaris';
 const freebsd = 'FreeBSD';
 const chromeos = 'ChromeOS';
@@ -35,7 +33,7 @@ const unknown = (): OperatingSystem => {
   });
 };
 
-const nu = (info: UaString): OperatingSystem => {
+const nu = (info: UaInfo): OperatingSystem => {
   const current = info.current;
   const version = info.version;
 
@@ -49,7 +47,7 @@ const nu = (info: UaString): OperatingSystem => {
     // TODO: Fix capitalisation
     isiOS: isOS(ios),
     isAndroid: isOS(android),
-    isOSX: isOS(osx),
+    isMacOS: isOS(macos),
     isLinux: isOS(linux),
     isSolaris: isOS(solaris),
     isFreeBSD: isOS(freebsd),
@@ -65,7 +63,7 @@ export const OperatingSystem = {
   ios: Fun.constant(ios),
   android: Fun.constant(android),
   linux: Fun.constant(linux),
-  osx: Fun.constant(osx),
+  macos: Fun.constant(macos),
   solaris: Fun.constant(solaris),
   freebsd: Fun.constant(freebsd),
   chromeos: Fun.constant(chromeos)

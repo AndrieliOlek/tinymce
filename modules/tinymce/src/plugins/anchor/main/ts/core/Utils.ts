@@ -1,13 +1,6 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 const namedAnchorSelector = 'a:not([href])';
 
-const isEmptyString = (str: string): boolean => !str;
+const isEmptyString = (str: string | undefined): boolean => !str;
 
 const getIdFromAnchor = (elm: HTMLAnchorElement): string => {
   const id = elm.getAttribute('id') || elm.getAttribute('name');
@@ -15,7 +8,7 @@ const getIdFromAnchor = (elm: HTMLAnchorElement): string => {
 };
 
 const isAnchor = (elm: Node): elm is HTMLAnchorElement =>
-  elm && elm.nodeName.toLowerCase() === 'a';
+  elm.nodeName.toLowerCase() === 'a';
 
 const isNamedAnchor = (elm: Node): elm is HTMLAnchorElement =>
   isAnchor(elm) && !elm.getAttribute('href') && getIdFromAnchor(elm) !== '';

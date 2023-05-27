@@ -1,12 +1,7 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
+import { Obj } from '@ephox/katamari';
 
 const guess = (url: string): string => {
-  const mimes = {
+  const mimes: Record<string, string> = {
     mp3: 'audio/mpeg',
     m4a: 'audio/x-m4a',
     wav: 'audio/wav',
@@ -15,10 +10,8 @@ const guess = (url: string): string => {
     ogg: 'video/ogg',
     swf: 'application/x-shockwave-flash'
   };
-  const fileEnd = url.toLowerCase().split('.').pop();
-  const mime = mimes[fileEnd];
-
-  return mime ? mime : '';
+  const fileEnd = url.toLowerCase().split('.').pop() ?? '';
+  return Obj.get(mimes, fileEnd).getOr('');
 };
 
 export {

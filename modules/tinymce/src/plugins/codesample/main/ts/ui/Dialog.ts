@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Arr, Fun } from '@ephox/katamari';
 
 import Editor from 'tinymce/core/api/Editor';
@@ -14,7 +7,7 @@ import * as Languages from '../core/Languages';
 
 type LanguageSpec = Languages.LanguageSpec;
 
-const open = (editor: Editor) => {
+const open = (editor: Editor): void => {
   const languages: LanguageSpec[] = Languages.getLanguages(editor);
   const defaultLanguage: string = Arr.head(languages).fold(Fun.constant(''), (l) => l.value);
   const currentLanguage: string = Languages.getCurrentLanguage(editor, defaultLanguage);
@@ -27,7 +20,7 @@ const open = (editor: Editor) => {
       type: 'panel',
       items: [
         {
-          type: 'selectbox',
+          type: 'listbox',
           name: 'language',
           label: 'Language',
           items: languages

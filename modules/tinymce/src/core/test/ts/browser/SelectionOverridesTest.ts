@@ -1,12 +1,13 @@
-import { PhantomSkipper } from '@ephox/agar';
+import { Mouse } from '@ephox/agar';
 import { describe, it } from '@ephox/bedrock-client';
 import { Arr } from '@ephox/katamari';
-import { TinyHooks } from '@ephox/mcagar';
+import { Scroll, SugarElement, Traverse } from '@ephox/sugar';
+import { TinyAssertions, TinyDom, TinyHooks, TinySelections, TinyState } from '@ephox/wrap-mcagar';
 import { assert } from 'chai';
 
 import Editor from 'tinymce/core/api/Editor';
+import { isCaretContainerBlock } from 'tinymce/core/caret/CaretContainer';
 import * as Zwsp from 'tinymce/core/text/Zwsp';
-import Theme from 'tinymce/themes/silver/Theme';
 
 describe('browser.tinymce.core.SelectionOverridesTest', () => {
   const hook = TinyHooks.bddSetupLight<Editor>({
@@ -15,18 +16,52 @@ describe('browser.tinymce.core.SelectionOverridesTest', () => {
     disable_nodechange: true,
     entities: 'raw',
     indent: false,
+    content_style: 'body { margin: 16px; }',
     base_url: '/project/tinymce/js/tinymce'
-  }, [ Theme ]);
+  }, []);
+
+  const getScrollTop = (editor: Editor) => Scroll.get(TinyDom.document(editor)).top;
+
+  const assertSelectionIsCaretBlock = (editor: Editor, caretValue: 'before' | 'after') => {
+    const selectedNode = editor.selection.getNode();
+    assert.isTrue(isCaretContainerBlock(selectedNode), 'Selected node should be a fake caret node');
+    assert.equal(selectedNode.getAttribute('data-mce-caret'), caretValue);
+  };
+
+  const selectBesideContentEditable = (editor: Editor, contentEditableElm: HTMLElement, clickPoint: 'before' | 'after', offset: number) => {
+    editor.selection.scrollIntoView(contentEditableElm);
+
+    const scrollTop = getScrollTop(editor);
+    const rect = contentEditableElm.getBoundingClientRect();
+    const clientX = clickPoint === 'before' ? rect.left - offset : rect.right + offset;
+    const clientY = rect.top + (rect.height / 2);
+
+    const target = Traverse.parentElement(SugarElement.fromDom(contentEditableElm)).getOrThunk(() => TinyDom.documentElement(editor));
+    Mouse.point('mousedown', 0, target, clientX, clientY);
+    // Check the scroll position has not changed
+    assert.equal(getScrollTop(editor), scrollTop);
+    // Check fake caret has been added
+    assertSelectionIsCaretBlock(editor, clickPoint);
+  };
 
   it('click on link in cE=false', () => {
     const editor = hook.editor();
     editor.setContent('<p contentEditable="false"><a href="#"><strong>link</strong></a></p>');
-    const evt = editor.fire('click', { target: editor.$('strong')[0] } as any);
+    const evt = editor.dispatch('click', { target: editor.dom.select('strong')[0] } as any);
 
     assert.equal(evt.isDefaultPrevented(), true);
   });
 
-  it('click next to cE=false block', () => {
+  it('TINY-9470: click on link in cE=false editor root', () => {
+    TinyState.withNoneditableRootEditor(hook.editor(), (editor) => {
+      editor.setContent('<p><a href="#"><strong>link</strong></a></p>');
+      const evt = editor.dispatch('click', { target: editor.dom.select('strong')[0] } as any);
+
+      assert.equal(evt.isDefaultPrevented(), true);
+    });
+  });
+
+  it('click in non-empty cell next to cell with cE=false block', () => {
     const editor = hook.editor();
     editor.setContent(
       '<table style="width: 100%">' +
@@ -38,31 +73,53 @@ describe('browser.tinymce.core.SelectionOverridesTest', () => {
     );
 
     const firstTd = editor.dom.select('td')[0];
-    const rect = editor.dom.getRect(firstTd);
+    const rect = firstTd.getBoundingClientRect();
+    Mouse.mouseDown(SugarElement.fromDom(firstTd), { dx: 10, dy: rect.height / 2 });
 
-    editor.fire('mousedown', {
-      target: firstTd as EventTarget,
-      clientX: rect.x + rect.w,
-      clientY: rect.y + 10
-    } as MouseEvent);
-
-    // Since we can't do a real click we need to check if it gets sucked in towards the cE=false block
-    assert.equal(editor.selection.getNode().nodeName !== 'P', true);
+    const selectedNode = editor.selection.getNode();
+    assert.isFalse(isCaretContainerBlock(selectedNode));
   });
 
-  it('offscreen copy of cE=false block remains offscreen', function () {
-    // Chrome and Safari behave correctly, and PhantomJS also declares itself as WebKit but does not
-    // put the off-screen selection off-screen, so fails the above tests. However, it has no visible UI,
-    // so everything is off-screen anyway :-)
-    if (PhantomSkipper.detect()) {
-      this.skip();
-    }
+  it('TINY-7736: click in empty cell next to cell with cE=false block', () => {
+    const editor = hook.editor();
+    editor.setContent(
+      '<table style="width: 100%">' +
+      '<tr><th>Header 1</th><th>Header 2</th></tr>' +
+      '<tr>' +
+      '<td><div contentEditable="false" style="height: 100px">1</div><p>&nbsp;</p></td>' +
+      '<td>&nbsp;</td>' +
+      '</tr>' +
+      '</table>'
+    );
 
+    const secondTd = editor.dom.select('td')[1];
+    const rect = secondTd.getBoundingClientRect();
+    Mouse.mouseDown(SugarElement.fromDom(secondTd), { dx: 10, dy: rect.height / 2 });
+
+    const selectedNode = editor.selection.getNode();
+    assert.isFalse(isCaretContainerBlock(selectedNode));
+  });
+
+  it('TINY-7736: click next to cE=false block in table cell', () => {
+    const editor = hook.editor();
+    editor.setContent(
+      '<table style="width: 100%">' +
+      '<tr>' +
+      '<td><p>&nbsp;</p><div contentEditable="false" style="width: 100px; height: 100px">2</div><p>&nbsp;</p></td>' +
+      '</tr>' +
+      '</table>'
+    );
+
+    const noneditableDiv = editor.dom.select('div')[0];
+    selectBesideContentEditable(editor, noneditableDiv, 'before', 2);
+  });
+
+  it('offscreen copy of cE=false block remains offscreen', () => {
     const editor = hook.editor();
     editor.setContent(
       '<table contenteditable="false" style="width: 100%; table-layout: fixed">' +
-      '<tbody><tr><td>1</td><td>2</td></tr></tbody>' +
-      '</table>'
+        '<tbody><tr><td>1</td><td>2</td></tr></tbody>' +
+        '</table>'
     );
 
     editor.selection.select(editor.dom.select('table')[0]);
@@ -72,32 +129,30 @@ describe('browser.tinymce.core.SelectionOverridesTest', () => {
     assert.isBelow(offscreenSelection.offsetLeft, 0, `The offscreen selection's left border is onscreen`);
     assert.isBelow(offscreenSelection.offsetWidth + offscreenSelection.offsetLeft, 0,
       'The cE=false offscreen selection is visible on-screen. Right edge: ' +
-      offscreenSelection.offsetLeft + '+' + offscreenSelection.offsetWidth + '=' +
-      (offscreenSelection.offsetLeft + offscreenSelection.offsetWidth) + 'px'
+        offscreenSelection.offsetLeft + '+' + offscreenSelection.offsetWidth + '=' +
+        (offscreenSelection.offsetLeft + offscreenSelection.offsetWidth) + 'px'
     );
   });
 
   it('TINY-6555: click on ce=false body should not show offscreen selection', () => {
-    const editor = hook.editor();
-    const body = editor.getBody();
-    editor.setContent(
-      '<table contenteditable="true" style="width: 100%; table-layout: fixed">' +
-      '<tbody><tr><td>1</td><td>2</td></tr></tbody>' +
-      '</table>'
-    );
-    editor.getBody().contentEditable = 'false';
+    TinyState.withNoneditableRootEditor(hook.editor(), (editor) => {
+      const body = editor.getBody();
+      editor.setContent(
+        '<table contenteditable="true" style="width: 100%; table-layout: fixed">' +
+        '<tbody><tr><td>1</td><td>2</td></tr></tbody>' +
+        '</table>'
+      );
 
-    const rect = editor.dom.getRect(body);
-    editor.fire('mousedown', {
-      target: body as EventTarget,
-      clientX: rect.x,
-      clientY: rect.y
-    } as MouseEvent);
+      const rect = editor.dom.getRect(body);
+      editor.dispatch('mousedown', {
+        target: body as EventTarget,
+        clientX: rect.x,
+        clientY: rect.y
+      } as MouseEvent);
 
-    const offscreenElements = editor.dom.select('.mce-offscreen-selection');
-    assert.lengthOf(offscreenElements, 0, 'No offscreen element shown');
-
-    editor.getBody().contentEditable = 'true';
+      const offscreenElements = editor.dom.select('.mce-offscreen-selection');
+      assert.lengthOf(offscreenElements, 0, 'No offscreen element shown');
+    });
   });
 
   it('set range after ce=false element but lean backwards', () => {
@@ -119,13 +174,13 @@ describe('browser.tinymce.core.SelectionOverridesTest', () => {
     const rng = document.createRange();
     const firstSpan = editor.dom.select('span[contenteditable=false]')[0];
     const secondSpan = editor.dom.select('span[contenteditable=false]')[1];
-    const p = secondSpan.parentNode;
+    const p = secondSpan.parentNode as HTMLParagraphElement;
     if (firstSpan.previousSibling) {
       p.removeChild(firstSpan.previousSibling);
     }
     p.appendChild(document.createTextNode(Zwsp.ZWSP));
 
-    rng.setEnd(secondSpan.nextSibling, 1);
+    rng.setEnd(secondSpan.nextSibling as Text, 1);
     rng.setStartBefore(firstSpan);
 
     editor.selection.setRng(rng, false);
@@ -199,7 +254,7 @@ describe('browser.tinymce.core.SelectionOverridesTest', () => {
 
     assert.isFalse(caretContainer.hasAttribute('data-mce-bogus'), 'Bogus attribute should have been removed');
     assert.isFalse(caretContainer.hasAttribute('data-mce-caret'), 'Caret attribute should have been removed');
-    assert.equal(editor.getContent(), '<p>\u00a0</p><p contenteditable="false">a</p>');
+    TinyAssertions.assertContent(editor, '<p>\u00a0</p><p contenteditable="false">a</p>');
   });
 
   it('showBlockCaretContainer after ce=false element', () => {
@@ -218,7 +273,7 @@ describe('browser.tinymce.core.SelectionOverridesTest', () => {
 
     assert.isFalse(caretContainer.hasAttribute('data-mce-bogus'), 'Bogus attribute should have been removed');
     assert.isFalse(caretContainer.hasAttribute('data-mce-caret'), 'Caret attribute should have been removed');
-    assert.equal(editor.getContent(), '<p contenteditable="false">a</p><p>\u00a0</p>');
+    TinyAssertions.assertContent(editor, '<p contenteditable="false">a</p><p>\u00a0</p>');
   });
 
   it('set range in short ended element', () => {
@@ -239,5 +294,45 @@ describe('browser.tinymce.core.SelectionOverridesTest', () => {
       assert.equal(newRng.endContainer, paraElem, `End container should be before ${elmName}`);
       assert.equal(newRng.endOffset, 0, `End offset should be before ${elmName}`);
     });
+  });
+
+  it('TINY-7062: place cursor in ce=true element, click to left of ce=false parent element', () => {
+    const editor = hook.editor();
+    const content = '<p style="padding-bottom: 2000px;">Normal paragraph with padding</p><div contenteditable="false"><p contenteditable="true">abc</p></div>';
+
+    editor.setContent(content);
+    TinySelections.setCursor(editor, [ 1, 0, 0 ], 1);
+    // Click to the left of the ce=false element
+    const noneditableDiv = editor.dom.select('div[contenteditable=false]')[0];
+    // The default body margin is 16 so divide by 2 for the offset to get 8
+    selectBesideContentEditable(editor, noneditableDiv, 'before', 8);
+
+    TinyAssertions.assertContent(editor, content);
+  });
+
+  it('TINY-7062: place cursor in ce=true element, click to right of ce=false parent element', () => {
+    const editor = hook.editor();
+    const content = '<p style="padding-bottom: 2000px;">Normal paragraph with padding</p><div contenteditable="false"><p contenteditable="true">abc</p></div>';
+
+    editor.setContent(content);
+    TinySelections.setCursor(editor, [ 1, 0, 0 ], 1);
+
+    // Click to the right of the ce=false element
+    const noneditableDiv = editor.dom.select('div[contenteditable=false]')[0];
+    // The default body margin is 16 so divide by 2 for the offset to get 8
+    selectBesideContentEditable(editor, noneditableDiv, 'after', 8);
+
+    TinyAssertions.assertContent(editor, content);
+  });
+
+  it('TINY-9194: set the caret after ce=false inline element and zwnbsp but lean backwards into zwnbsp', () => {
+    const editor = hook.editor();
+    editor.setContent('<p><span contenteditable="false">CEF</span></p>');
+    TinySelections.setCursor(editor, [ 0 ], 2);
+    // actual content <p><span contenteditable="false">a</span>&#xFEFF;</p>
+    TinyAssertions.assertCursor(editor, [ 0, 1 ], 1);
+    TinySelections.setCursor(editor, [ 0 ], 2);
+    // actual content <p><span contenteditable="false">a</span>&#xFEFF;</p>
+    TinyAssertions.assertCursor(editor, [ 0, 1 ], 1);
   });
 });

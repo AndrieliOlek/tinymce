@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Arr, Fun, Obj } from '@ephox/katamari';
 import { SandNode } from '@ephox/sand';
 import { SelectorFilter, SugarElement, Traverse } from '@ephox/sugar';
@@ -15,22 +8,33 @@ import DomTreeWalker from 'tinymce/core/api/dom/TreeWalker';
 import { TextSection } from './Types';
 
 interface WalkerCallbacks {
-  boundary: (node: Node) => boolean;
-  cef: (node: Node) => boolean;
-  text: (node: Text) => void;
+  readonly boundary: (node: Node) => boolean;
+  readonly cef: (node: Node) => boolean;
+  readonly text: (node: Text) => void;
 }
 
 interface CollectCallbacks {
-  cef: (node: Node) => TextSection[];
-  text: (node: Text, section: TextSection) => void;
+  readonly cef: (node: Node) => TextSection[];
+  readonly text: (node: Text, section: TextSection) => void;
 }
 
-const isSimpleBoundary = (dom: DOMUtils, node: Node) => dom.isBlock(node) || Obj.has(dom.schema.getShortEndedElements(), node.nodeName);
-const isContentEditableFalse = (dom: DOMUtils, node: Node) => dom.getContentEditable(node) === 'false';
-const isContentEditableTrueInCef = (dom: DOMUtils, node: Node) => dom.getContentEditable(node) === 'true' && dom.getContentEditableParent(node.parentNode) === 'false';
-const isHidden = (dom: DOMUtils, node: Node) => !dom.isBlock(node) && Obj.has(dom.schema.getWhiteSpaceElements(), node.nodeName);
-const isBoundary = (dom: DOMUtils, node: Node) => isSimpleBoundary(dom, node) || isContentEditableFalse(dom, node) || isHidden(dom, node) || isContentEditableTrueInCef(dom, node);
-const isText = (node: Node): node is Text => node.nodeType === 3;
+const isSimpleBoundary = (dom: DOMUtils, node: Node) =>
+  dom.isBlock(node) || Obj.has(dom.schema.getVoidElements(), node.nodeName);
+
+const isContentEditableFalse = (dom: DOMUtils, node: Node) =>
+  dom.getContentEditable(node) === 'false';
+
+const isContentEditableTrueInCef = (dom: DOMUtils, node: Node) =>
+  dom.getContentEditable(node) === 'true' && node.parentNode && dom.getContentEditableParent(node.parentNode) === 'false';
+
+const isHidden = (dom: DOMUtils, node: Node) =>
+  !dom.isBlock(node) && Obj.has(dom.schema.getWhitespaceElements(), node.nodeName);
+
+const isBoundary = (dom: DOMUtils, node: Node) =>
+  isSimpleBoundary(dom, node) || isContentEditableFalse(dom, node) || isHidden(dom, node) || isContentEditableTrueInCef(dom, node);
+
+const isText = (node: Node): node is Text =>
+  node.nodeType === 3;
 
 const nuSection = (): TextSection => ({
   sOffset: 0,
@@ -38,9 +42,10 @@ const nuSection = (): TextSection => ({
   elements: []
 });
 
-const toLeaf = (node: Node, offset: number) => Traverse.leaf(SugarElement.fromDom(node), offset);
+const toLeaf = (node: Node, offset: number): Traverse.ElementAndOffset<Node> =>
+  Traverse.leaf(SugarElement.fromDom(node), offset);
 
-const walk = (dom: DOMUtils, walkerFn: (shallow?: boolean) => Node, startNode: Node, callbacks: WalkerCallbacks, endNode?: Node, skipStart: boolean = true) => {
+const walk = (dom: DOMUtils, walkerFn: (shallow?: boolean) => Node | null | undefined, startNode: Node, callbacks: WalkerCallbacks, endNode?: Node, skipStart: boolean = true): void => {
   let next = skipStart ? walkerFn(false) : startNode;
   while (next) {
     // Walk over content editable or hidden elements
@@ -69,13 +74,13 @@ const walk = (dom: DOMUtils, walkerFn: (shallow?: boolean) => Node, startNode: N
   }
 };
 
-const collectTextToBoundary = (dom: DOMUtils, section: TextSection, node: Node, rootNode: Node, forwards: boolean) => {
+const collectTextToBoundary = (dom: DOMUtils, section: TextSection, node: Node, rootNode: Node, forwards: boolean): void => {
   // Don't bother collecting text nodes if we're already at a boundary
   if (isBoundary(dom, node)) {
     return;
   }
 
-  const rootBlock = dom.getParent(rootNode, dom.isBlock);
+  const rootBlock = dom.getParent(rootNode, dom.isBlock) ?? dom.getRoot();
   const walker = new DomTreeWalker(node, rootBlock);
   const walkerFn = forwards ? walker.next.bind(walker) : walker.prev.bind(walker);
 
@@ -95,7 +100,7 @@ const collectTextToBoundary = (dom: DOMUtils, section: TextSection, node: Node, 
   });
 };
 
-const collect = (dom: DOMUtils, rootNode: Node, startNode: Node, endNode?: Node, callbacks?: CollectCallbacks, skipStart: boolean = true) => {
+const collect = (dom: DOMUtils, rootNode: Node, startNode: Node, endNode?: Node, callbacks?: CollectCallbacks, skipStart: boolean = true): TextSection[] => {
   const walker = new DomTreeWalker(startNode, rootNode);
   const sections: TextSection[] = [];
   let current: TextSection = nuSection();
@@ -167,7 +172,8 @@ const collectRangeSections = (dom: DOMUtils, rng: Range): TextSection[] => {
   }, false);
 };
 
-const fromRng = (dom: DOMUtils, rng: Range): TextSection[] => rng.collapsed ? [] : collectRangeSections(dom, rng);
+const fromRng = (dom: DOMUtils, rng: Range): TextSection[] =>
+  rng.collapsed ? [] : collectRangeSections(dom, rng);
 
 const fromNode = (dom: DOMUtils, node: Node): TextSection[] => {
   const rng = dom.createRng();
@@ -175,7 +181,8 @@ const fromNode = (dom: DOMUtils, node: Node): TextSection[] => {
   return fromRng(dom, rng);
 };
 
-const fromNodes = (dom: DOMUtils, nodes: Node[]): TextSection[] => Arr.bind(nodes, (node) => fromNode(dom, node));
+const fromNodes = (dom: DOMUtils, nodes: Node[]): TextSection[] =>
+  Arr.bind(nodes, (node) => fromNode(dom, node));
 
 export {
   fromNode,

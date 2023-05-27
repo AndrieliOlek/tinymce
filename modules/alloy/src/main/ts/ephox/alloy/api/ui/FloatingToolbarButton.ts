@@ -1,8 +1,7 @@
-import { Fun, Optional } from '@ephox/katamari';
-import { SugarElement } from '@ephox/sugar';
+import { Fun, Optional, Singleton } from '@ephox/katamari';
 
 import * as ComponentStructure from '../../alien/ComponentStructure';
-import * as AriaOwner from '../../aria/AriaOwner';
+import * as AriaControls from '../../aria/AriaControls';
 import * as MaxWidth from '../../positioning/layout/MaxWidth';
 import { Layouts } from '../../positioning/mode/Anchoring';
 import * as Dismissal from '../../sandbox/Dismissal';
@@ -27,6 +26,14 @@ import * as Sketcher from './Sketcher';
 import { Toolbar } from './Toolbar';
 import { CompositeSketchFactory } from './UiSketcher';
 
+const shouldSkipFocus = Singleton.value<boolean>();
+
+const toggleWithoutFocusing = (button: AlloyComponent, externals: Record<string, any>) => {
+  shouldSkipFocus.set(true);
+  toggle(button, externals);
+  shouldSkipFocus.clear();
+};
+
 const toggle = (button: AlloyComponent, externals: Record<string, any>) => {
   const toolbarSandbox = Coupling.getCoupled(button, 'toolbarSandbox');
   if (Sandboxing.isOpen(toolbarSandbox)) {
@@ -40,14 +47,16 @@ const position = (button: AlloyComponent, toolbar: AlloyComponent, detail: Float
   const bounds = detail.getBounds.map((bounder) => bounder());
   const sink = detail.lazySink(button).getOrDie();
 
-  Positioning.positionWithinBounds(sink, {
-    anchor: 'hotspot',
-    hotspot: button,
-    layouts,
-    overrides: {
-      maxWidthFunction: MaxWidth.expandable()
+  Positioning.positionWithinBounds(sink, toolbar, {
+    anchor: {
+      type: 'hotspot',
+      hotspot: button,
+      layouts,
+      overrides: {
+        maxWidthFunction: MaxWidth.expandable()
+      }
     }
-  }, toolbar, bounds);
+  }, bounds);
 };
 
 const setGroups = (button: AlloyComponent, toolbar: AlloyComponent, detail: FloatingToolbarButtonDetail, layouts: Layouts | undefined, groups: AlloySpec[]) => {
@@ -57,28 +66,33 @@ const setGroups = (button: AlloyComponent, toolbar: AlloyComponent, detail: Floa
 };
 
 const makeSandbox = (button: AlloyComponent, spec: FloatingToolbarButtonSpec, detail: FloatingToolbarButtonDetail) => {
-  const ariaOwner = AriaOwner.manager();
+  const ariaControls = AriaControls.manager();
 
   const onOpen = (sandbox: AlloyComponent, toolbar: AlloyComponent) => {
+    const skipFocus = shouldSkipFocus.get().getOr(false);
     detail.fetch().get((groups) => {
       setGroups(button, toolbar, detail, spec.layouts, groups);
-      ariaOwner.link(button.element);
-      Keying.focusIn(toolbar);
+      ariaControls.link(button.element);
+      if (!skipFocus) {
+        Keying.focusIn(toolbar);
+      }
     });
   };
 
   const onClose = () => {
     // Toggle and focus the button
     Toggling.off(button);
-    Focusing.focus(button);
-    ariaOwner.unlink(button.element);
+    if (!shouldSkipFocus.get().getOr(false)) {
+      Focusing.focus(button);
+    }
+    ariaControls.unlink(button.element);
   };
 
   return {
     dom: {
       tag: 'div',
       attributes: {
-        id: ariaOwner.id
+        id: ariaControls.id
       }
     },
     behaviours: Behaviour.derive(
@@ -93,7 +107,7 @@ const makeSandbox = (button: AlloyComponent, spec: FloatingToolbarButtonSpec, de
         Sandboxing.config({
           onOpen,
           onClose,
-          isPartOf: (container: AlloyComponent, data: AlloyComponent, queryElem: SugarElement): boolean => {
+          isPartOf: (container, data, queryElem): boolean => {
             return ComponentStructure.isPartOf(data, queryElem) || ComponentStructure.isPartOf(button, queryElem);
           },
           getAttachPoint: () => {
@@ -153,6 +167,9 @@ const factory: CompositeSketchFactory<FloatingToolbarButtonDetail, FloatingToolb
     toggle: (button: AlloyComponent) => {
       toggle(button, externals);
     },
+    toggleWithoutFocusing: (button: AlloyComponent) => {
+      toggleWithoutFocusing(button, externals);
+    },
     getToolbar: (button: AlloyComponent) => {
       return Sandboxing.getState(Coupling.getCoupled(button, 'toolbarSandbox'));
     },
@@ -176,6 +193,9 @@ const FloatingToolbarButton: FloatingToolbarButtonSketcher = Sketcher.composite<
     },
     toggle: (apis, button) => {
       apis.toggle(button);
+    },
+    toggleWithoutFocusing: (apis, button) => {
+      apis.toggleWithoutFocusing(button);
     },
     getToolbar: (apis, button) => apis.getToolbar(button),
     isOpen: (apis, button) => apis.isOpen(button)

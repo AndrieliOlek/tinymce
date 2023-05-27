@@ -1,9 +1,8 @@
 import { describe, it } from '@ephox/bedrock-client';
-import { TinyDom, TinyHooks } from '@ephox/mcagar';
+import { TinyDom, TinyHooks } from '@ephox/wrap-mcagar';
 
 import Editor from 'tinymce/core/api/Editor';
 import Plugin from 'tinymce/plugins/codesample/Plugin';
-import Theme from 'tinymce/themes/silver/Theme';
 
 import * as TestUtils from '../module/CodeSampleTestUtils';
 
@@ -12,7 +11,7 @@ describe('browser.tinymce.plugins.codesample.ChangeLanguageCodeSampleTest', () =
     plugins: 'codesample',
     toolbar: 'codesample',
     base_url: '/project/tinymce/js/tinymce'
-  }, [ Plugin, Theme ]);
+  }, [ Plugin ]);
 
   const jsContent = 'var foo = "bar";';
 

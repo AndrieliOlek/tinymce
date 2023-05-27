@@ -1,16 +1,15 @@
 import { ApproxStructure, Keys } from '@ephox/agar';
 import { before, context, describe, it } from '@ephox/bedrock-client';
 import { Arr } from '@ephox/katamari';
-import { TinyAssertions, TinyContentActions, TinyHooks, TinySelections } from '@ephox/mcagar';
+import { TinyAssertions, TinyContentActions, TinyHooks, TinySelections } from '@ephox/wrap-mcagar';
 
 import Editor from 'tinymce/core/api/Editor';
 import Env from 'tinymce/core/api/Env';
-import Theme from 'tinymce/themes/silver/Theme';
 
 describe('browser.tinymce.core.delete.MediaDeleteTest', () => {
   const hook = TinyHooks.bddSetupLight<Editor>({
     base_url: '/project/tinymce/js/tinymce'
-  }, [ Theme ], true);
+  }, [], true);
 
   const assertEmptyEditorStructure = (editor: Editor) => TinyAssertions.assertContentStructure(editor, ApproxStructure.build((s, str) =>
     s.element('body', {
@@ -33,7 +32,8 @@ describe('browser.tinymce.core.delete.MediaDeleteTest', () => {
     { type: 'audio', content: '<audio controls="controls"><source src="custom/audio.mp3" /></audio>', skip: false },
     // Firefox won't render without a valid embed/object, so skip
     { type: 'embed', content: '<embed src="custom/video.mp4" />', skip: Env.browser.isFirefox() },
-    { type: 'object', content: '<object data="custom/file.pdf"></object>', skip: Env.browser.isFirefox() }
+    // TINY-7871: Safari 14.1 also appears to have a bug that causes it to freeze without a valid object
+    { type: 'object', content: '<object data="custom/file.pdf"></object>', skip: Env.browser.isFirefox() || Env.browser.isSafari() }
   ], (test) => {
     const { type, content } = test;
 

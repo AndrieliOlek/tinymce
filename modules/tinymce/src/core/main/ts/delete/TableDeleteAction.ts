@@ -1,10 +1,3 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Adt, Arr, Optional, Optionals } from '@ephox/katamari';
 import { Compare, SelectorFind, SugarElement } from '@ephox/sugar';
 
@@ -91,7 +84,7 @@ const getTableFromCellRng = (cellRng: TableCellRng, isRoot: IsRootFn): Optional<
       TableCellSelection.getClosestTable(cellRng.end, isRoot)
         .bind((endParentTable) => Optionals.someIf(Compare.eq(startParentTable, endParentTable), startParentTable)));
 
-const isSingleCellTable = (cellRng: TableCellRng, isRoot: IsRootFn) => !isExpandedCellRng(cellRng) &&
+const isSingleCellTable = (cellRng: TableCellRng, isRoot: IsRootFn): boolean => !isExpandedCellRng(cellRng) &&
    getTableFromCellRng(cellRng, isRoot).exists((table) => {
      const rows = table.dom.rows;
      return rows.length === 1 && rows[0].cells.length === 1;
@@ -113,7 +106,7 @@ const getCellRangeFromEndTable = (isRoot: IsRootFn) => (endCell: SugarElement<HT
     Arr.head(TableDeleteUtils.getTableCells(table)).map((startCell) => tableCellRng(startCell, endCell))
   );
 
-const getTableSelectionFromCellRng = (isRoot: IsRootFn) => (cellRng: TableCellRng) =>
+const getTableSelectionFromCellRng = (isRoot: IsRootFn) => (cellRng: TableCellRng): Optional<TableSelection> =>
   getTableFromCellRng(cellRng, isRoot).map((table) => tableSelection(cellRng, table, TableDeleteUtils.getTableCells(table)));
 
 const getTableSelections = (cellRng: Optional<TableCellRng>, selectionDetails: SelectionDetails, rng: Range, isRoot: IsRootFn): Optional<TableSelections> => {
@@ -199,7 +192,7 @@ const handleMultiTable = (cellRng: Optional<TableCellRng>, selectionDetails: Sel
       }
     });
 
-const getActionFromRange = (root: SugarElement, rng: Range): Optional<DeleteActionAdt> => {
+const getActionFromRange = (root: SugarElement<Node>, rng: Range): Optional<DeleteActionAdt> => {
   const isRoot = TableDeleteUtils.isRootFromElement(root);
   const optCellRng = getCellRng(rng, isRoot);
   const selectionDetails = TableDeleteUtils.getTableDetailsFromRange(rng, isRoot);

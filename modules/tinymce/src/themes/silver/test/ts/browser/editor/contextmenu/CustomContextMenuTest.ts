@@ -1,22 +1,21 @@
 import { Keyboard, Keys, UiFinder, Waiter } from '@ephox/agar';
 import { before, context, describe, it } from '@ephox/bedrock-client';
 import { Fun } from '@ephox/katamari';
-import { TinyHooks, TinySelections, TinyUiActions } from '@ephox/mcagar';
 import { SugarBody, SugarDocument } from '@ephox/sugar';
+import { TinyHooks, TinySelections, TinyUiActions } from '@ephox/wrap-mcagar';
 
 import Editor from 'tinymce/core/api/Editor';
-import Theme from 'tinymce/themes/silver/Theme';
 
 describe('browser.tinymce.themes.silver.editor.contextmenu.CustomContextMenuTest', () => {
   const hook = TinyHooks.bddSetupLight<Editor>({
     base_url: '/project/tinymce/js/tinymce',
-  }, [ Theme ], true);
+  }, [], true);
 
   const pOpenContextMenu = async (editor: Editor, selector: string) =>
     await TinyUiActions.pTriggerContextMenu(editor, selector, '.tox-silver-sink .tox-menu.tox-collection [role="menuitem"]');
 
   const pCloseContextMenu = async () => {
-    Keyboard.activeKeydown(SugarDocument.getDocument(), Keys.escape());
+    Keyboard.activeKeyup(SugarDocument.getDocument(), Keys.escape());
     await Waiter.pTryUntil('Close context menu', () => UiFinder.notExists(SugarBody.body(), 'div[role="menu"]'));
   };
 
@@ -34,7 +33,7 @@ describe('browser.tinymce.themes.silver.editor.contextmenu.CustomContextMenuTest
 
     it('TINY-7072: Support custom context menu items with lowercase names', async () => {
       const editor = hook.editor();
-      editor.settings.contextmenu = 'customcontextmenu';
+      editor.options.set('contextmenu', 'customcontextmenu');
       editor.setContent('<p>Tiny</p>');
       TinySelections.setCursor(editor, [ 0, 0 ], 'Ti'.length);
       await pOpenContextMenu(editor, 'p');
@@ -44,7 +43,7 @@ describe('browser.tinymce.themes.silver.editor.contextmenu.CustomContextMenuTest
 
     it('TINY-7072: Support custom context menu items with mixed case names', async () => {
       const editor = hook.editor();
-      editor.settings.contextmenu = 'customContextMenu';
+      editor.options.set('contextmenu', 'customcontextmenu');
       editor.setContent('<p>Tiny</p>');
       TinySelections.setCursor(editor, [ 0, 0 ], 'Ti'.length);
       await pOpenContextMenu(editor, 'p');
@@ -56,29 +55,29 @@ describe('browser.tinymce.themes.silver.editor.contextmenu.CustomContextMenuTest
   context('Menu item properties', () => {
     before(() => {
       const editor = hook.editor();
-      editor.settings.contextmenu = 'customcontextmenu';
+      editor.options.set('contextmenu', 'customcontextmenu');
       editor.ui.registry.addContextMenu('customContextMenu', {
         update: () => [
           {
             type: 'submenu',
             text: 'customSubMenuItem',
             shortcut: 'custom-shortcut',
-            disabled: false,
+            enabled: true,
             getSubmenuItems: () => [
               {
                 text: 'disabledCustomNestedMenuItem',
-                disabled: true,
+                enabled: false,
               },
               {
                 text: 'customNestedMenuItem',
                 shortcut: 'custom-nested-shortcut',
-                disabled: false,
+                enabled: true,
               }
             ],
           },
           {
             text: 'disabledCustomMenuItem',
-            disabled: true,
+            enabled: false,
           }
         ],
       });

@@ -1,4 +1,4 @@
-import { assert, UnitTest } from '@ephox/bedrock-client';
+import { Assert, UnitTest } from '@ephox/bedrock-client';
 import { Arr, Fun } from '@ephox/katamari';
 import { SugarElement } from '@ephox/sugar';
 
@@ -8,148 +8,190 @@ import * as MergingOperations from 'ephox/snooker/operate/MergingOperations';
 UnitTest.test('MergeOperationsTest', () => {
   const b = Structs.bounds;
   const r = Structs.rowcells;
-  const en = (fakeElement: any, isNew: boolean) => Structs.elementnew(fakeElement as SugarElement, isNew, false);
+  const re = () => 'row' as unknown as SugarElement<any>;
+  const en = (fakeElement: any, isNew: boolean) => Structs.elementnew(fakeElement as SugarElement<any>, isNew, false);
 
   // Test basic merge.
   (() => {
     const check = (expected: Structs.RowCells[], grid: Structs.RowCells[], bounds: Structs.Bounds, lead: string) => {
-      const actual = MergingOperations.merge(grid, bounds, Fun.tripleEquals, Fun.constant(lead as unknown as SugarElement));
-      assert.eq(expected.length, actual.length);
+      const actual = MergingOperations.merge(grid, bounds, Fun.tripleEquals, Fun.constant(lead as unknown as SugarElement<any>));
+      Assert.eq('', expected.length, actual.length);
       Arr.each(expected, (row, i) => {
         Arr.each(row.cells, (cell, j) => {
-          assert.eq(cell.element, actual[i].cells[j].element);
-          assert.eq(cell.isNew, actual[i].cells[j].isNew);
+          Assert.eq('', cell.element, actual[i].cells[j].element);
+          Assert.eq('', cell.isNew, actual[i].cells[j].isNew);
         });
-        assert.eq(row.section, actual[i].section);
+        Assert.eq('', row.section, actual[i].section);
       });
     };
 
     check([], [], b(0, 0, 1, 1), 'a');
-    check([ r([ en('a', false), en('a', false) ], 'thead') ], [ r([ en('a', false), en('b', false) ], 'thead') ], b(0, 0, 0, 1), 'a');
-    check([ r([ en('a', false), en('a', false) ], 'tbody') ], [ r([ en('a', false), en('b', false) ], 'tbody') ], b(0, 0, 0, 1), 'a');
+
     check(
-      [
-        r([ en('a', false), en('a', false) ], 'thead'),
-        r([ en('a', false), en('a', false) ], 'thead')
-      ],
-      [
-        r([ en('a', false), en('b', false) ], 'thead'),
-        r([ en('c', false), en('d', false) ], 'thead')
-      ], b(0, 0, 1, 1), 'a'
+      [ r(re(), [ en('a', false), en('a', false) ], 'thead', false) ],
+      [ r(re(), [ en('a', false), en('b', false) ], 'thead', false) ],
+      b(0, 0, 0, 1),
+      'a'
     );
+
     check(
-      [
-        r([ en('a', false), en('a', false) ], 'tbody'),
-        r([ en('a', false), en('a', false) ], 'tbody')
-      ],
-      [
-        r([ en('a', false), en('b', false) ], 'tbody'),
-        r([ en('c', false), en('d', false) ], 'tbody')
-      ], b(0, 0, 1, 1), 'a'
+      [ r(re(), [ en('a', false), en('a', false) ], 'tbody', false) ],
+      [ r(re(), [ en('a', false), en('b', false) ], 'tbody', false) ],
+      b(0, 0, 0, 1),
+      'a'
     );
 
     check(
       [
-        r([ en('a', false), en('a', false), en('c', false) ], 'thead'),
-        r([ en('d', false), en('e', false), en('f', false) ], 'tbody')
+        r(re(), [ en('a', false), en('a', false) ], 'thead', false),
+        r(re(), [ en('a', false), en('a', false) ], 'thead', false)
       ],
       [
-        r([ en('a', false), en('b', false), en('c', false) ], 'thead'),
-        r([ en('d', false), en('e', false), en('f', false) ], 'tbody')
-      ], b(0, 0, 0, 1), 'a'
+        r(re(), [ en('a', false), en('b', false) ], 'thead', false),
+        r(re(), [ en('c', false), en('d', false) ], 'thead', false)
+      ],
+      b(0, 0, 1, 1),
+      'a'
     );
+
     check(
       [
-        r([ en('a', false), en('a', false), en('c', false) ], 'tbody'),
-        r([ en('d', false), en('e', false), en('f', false) ], 'tbody')
+        r(re(), [ en('a', false), en('a', false) ], 'tbody', false),
+        r(re(), [ en('a', false), en('a', false) ], 'tbody', false)
       ],
       [
-        r([ en('a', false), en('b', false), en('c', false) ], 'tbody'),
-        r([ en('d', false), en('e', false), en('f', false) ], 'tbody')
+        r(re(), [ en('a', false), en('b', false) ], 'tbody', false),
+        r(re(), [ en('c', false), en('d', false) ], 'tbody', false)
+      ],
+      b(0, 0, 1, 1),
+      'a'
+    );
+
+    check(
+      [
+        r(re(), [ en('a', false), en('a', false), en('c', false) ], 'thead', false),
+        r(re(), [ en('d', false), en('e', false), en('f', false) ], 'tbody', false)
+      ],
+      [
+        r(re(), [ en('a', false), en('b', false), en('c', false) ], 'thead', false),
+        r(re(), [ en('d', false), en('e', false), en('f', false) ], 'tbody', false)
       ], b(0, 0, 0, 1), 'a'
     );
 
     check(
       [
-        r([ en('a', false), en('a', false), en('a', false) ], 'tbody'),
-        r([ en('a', false), en('a', false), en('a', false) ], 'tbody')
+        r(re(), [ en('a', false), en('a', false), en('c', false) ], 'tbody', false),
+        r(re(), [ en('d', false), en('e', false), en('f', false) ], 'tbody', false)
       ],
       [
-        r([ en('a', false), en('b', false), en('c', false) ], 'tbody'),
-        r([ en('d', false), en('e', false), en('f', false) ], 'tbody')
-      ], b(0, 0, 1, 2), 'a'
+        r(re(), [ en('a', false), en('b', false), en('c', false) ], 'tbody', false),
+        r(re(), [ en('d', false), en('e', false), en('f', false) ], 'tbody', false)
+      ],
+      b(0, 0, 0, 1),
+      'a'
+    );
+
+    check(
+      [
+        r(re(), [ en('a', false), en('a', false), en('a', false) ], 'tbody', false),
+        r(re(), [ en('a', false), en('a', false), en('a', false) ], 'tbody', false)
+      ],
+      [
+        r(re(), [ en('a', false), en('b', false), en('c', false) ], 'tbody', false),
+        r(re(), [ en('d', false), en('e', false), en('f', false) ], 'tbody', false)
+      ],
+      b(0, 0, 1, 2),
+      'a'
     );
   })();
 
   // Test basic unmerge.
   (() => {
     const check = (expected: Structs.RowCells[], grid: Structs.RowCells[], target: string) => {
-      const actual = MergingOperations.unmerge(grid, target as unknown as SugarElement, Fun.tripleEquals, Fun.constant('?') as any);
-      assert.eq(expected.length, actual.length);
+      const actual = MergingOperations.unmerge(grid, target as unknown as SugarElement<any>, Fun.tripleEquals, Fun.constant('?') as any);
+      Assert.eq('', expected.length, actual.length);
       Arr.each(expected, (row, i) => {
         Arr.each(row.cells, (cell, j) => {
-          assert.eq(cell.element, actual[i].cells[j].element);
-          assert.eq(cell.isNew, actual[i].cells[j].isNew);
+          Assert.eq('', cell.element, actual[i].cells[j].element);
+          Assert.eq('', cell.isNew, actual[i].cells[j].isNew);
         });
-        assert.eq(row.section, actual[i].section);
+        Assert.eq('section type', row.section, actual[i].section);
+        Assert.eq('is new row', row.isNew, actual[i].isNew);
       });
     };
 
     check([], [], 'a');
-    check([ r([ en('a', false), en('?', true) ], 'thead') ], [ r([ en('a', false), en('a', false) ], 'thead') ], 'a');
-    check([ r([ en('a', false), en('?', true) ], 'tbody') ], [ r([ en('a', false), en('a', false) ], 'tbody') ], 'a');
+
     check(
-      [
-        r([ en('a', false), en('?', true) ], 'tbody'),
-        r([ en('?', true), en('?', true) ], 'tbody')
-      ],
-      [
-        r([ en('a', false), en('a', false) ], 'tbody'),
-        r([ en('a', false), en('a', false) ], 'tbody')
-      ], 'a'
+      [ r(re(), [ en('a', false), en('?', true) ], 'thead', false) ],
+      [ r(re(), [ en('a', false), en('a', false) ], 'thead', false) ],
+      'a'
+    );
+
+    check(
+      [ r(re(), [ en('a', false), en('?', true) ], 'tbody', false) ],
+      [ r(re(), [ en('a', false), en('a', false) ], 'tbody', false) ],
+      'a'
     );
 
     check(
       [
-        r([ en('a', false), en('b', false), en('?', true), en('c', false) ], 'thead')
+        r(re(), [ en('a', false), en('?', true) ], 'tbody', false),
+        r(re(), [ en('?', true), en('?', true) ], 'tbody', false)
       ],
       [
-        r([ en('a', false), en('b', false), en('b', false), en('c', false) ], 'thead')
-      ], 'b'
-    );
-    check(
-      [
-        r([ en('a', false), en('b', false), en('?', true), en('c', false) ], 'tbody')
+        r(re(), [ en('a', false), en('a', false) ], 'tbody', false),
+        r(re(), [ en('a', false), en('a', false) ], 'tbody', false)
       ],
-      [
-        r([ en('a', false), en('b', false), en('b', false), en('c', false) ], 'tbody')
-      ], 'b'
+      'a'
     );
 
     check(
       [
-        r([ en('a', false), en('b', false), en('?', true), en('c', false) ], 'tbody'),
-        r([ en('a', false), en('?', true), en('?', true), en('d', false) ], 'tbody'),
-        r([ en('f', false), en('?', true), en('?', true), en('e', false) ], 'tbody')
+        r(re(), [ en('a', false), en('b', false), en('?', true), en('c', false) ], 'thead', false)
       ],
       [
-        r([ en('a', false), en('b', false), en('b', false), en('c', false) ], 'tbody'),
-        r([ en('a', false), en('b', false), en('b', false), en('d', false) ], 'tbody'),
-        r([ en('f', false), en('b', false), en('b', false), en('e', false) ], 'tbody')
-      ], 'b'
+        r(re(), [ en('a', false), en('b', false), en('b', false), en('c', false) ], 'thead', false)
+      ],
+      'b'
     );
 
     check(
       [
-        r([ en('a', false), en('b', false), en('b', false), en('c', false) ], 'tbody'),
-        r([ en('?', true), en('b', false), en('b', false), en('d', false) ], 'tbody'),
-        r([ en('f', false), en('b', false), en('b', false), en('e', false) ], 'tbody')
+        r(re(), [ en('a', false), en('b', false), en('?', true), en('c', false) ], 'tbody', false)
       ],
       [
-        r([ en('a', false), en('b', false), en('b', false), en('c', false) ], 'tbody'),
-        r([ en('a', false), en('b', false), en('b', false), en('d', false) ], 'tbody'),
-        r([ en('f', false), en('b', false), en('b', false), en('e', false) ], 'tbody')
-      ], 'a'
+        r(re(), [ en('a', false), en('b', false), en('b', false), en('c', false) ], 'tbody', false)
+      ],
+      'b'
+    );
+
+    check(
+      [
+        r(re(), [ en('a', false), en('b', false), en('?', true), en('c', false) ], 'tbody', false),
+        r(re(), [ en('a', false), en('?', true), en('?', true), en('d', false) ], 'tbody', false),
+        r(re(), [ en('f', false), en('?', true), en('?', true), en('e', false) ], 'tbody', false)
+      ],
+      [
+        r(re(), [ en('a', false), en('b', false), en('b', false), en('c', false) ], 'tbody', false),
+        r(re(), [ en('a', false), en('b', false), en('b', false), en('d', false) ], 'tbody', false),
+        r(re(), [ en('f', false), en('b', false), en('b', false), en('e', false) ], 'tbody', false)
+      ],
+      'b'
+    );
+
+    check(
+      [
+        r(re(), [ en('a', false), en('b', false), en('b', false), en('c', false) ], 'tbody', false),
+        r(re(), [ en('?', true), en('b', false), en('b', false), en('d', false) ], 'tbody', false),
+        r(re(), [ en('f', false), en('b', false), en('b', false), en('e', false) ], 'tbody', false)
+      ],
+      [
+        r(re(), [ en('a', false), en('b', false), en('b', false), en('c', false) ], 'tbody', false),
+        r(re(), [ en('a', false), en('b', false), en('b', false), en('d', false) ], 'tbody', false),
+        r(re(), [ en('f', false), en('b', false), en('b', false), en('e', false) ], 'tbody', false)
+      ],
+      'a'
     );
   })();
 });

@@ -1,29 +1,28 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
-import { Cell, Merger, Obj, Optional, Strings } from '@ephox/katamari';
+import { Merger, Obj, Optional, Singleton, Strings } from '@ephox/katamari';
 
 import Editor from 'tinymce/core/api/Editor';
 import Resource from 'tinymce/core/api/Resource';
-import Delay from 'tinymce/core/api/util/Delay';
-import Promise from 'tinymce/core/api/util/Promise';
 
-import * as Settings from '../api/Settings';
+import * as Options from '../api/Options';
 
 const ALL_CATEGORY = 'All';
 
 interface RawEmojiEntry {
-  keywords: string[];
-  char: string;
-  category: string;
+  readonly keywords: string[];
+  readonly char: string;
+  readonly category: string;
 }
 
 export interface EmojiEntry extends RawEmojiEntry {
-  title: string;
+  readonly title: string;
+}
+
+export interface EmojiDatabase {
+  readonly listCategory: (category: string) => EmojiEntry[];
+  readonly hasLoaded: () => boolean;
+  readonly waitForLoad: () => Promise<boolean>;
+  readonly listAll: () => EmojiEntry[];
+  readonly listCategories: () => string[];
 }
 
 const categoryNameMap = {
@@ -38,19 +37,12 @@ const categoryNameMap = {
   user: 'User Defined'
 };
 
-export interface EmojiDatabase {
-  listCategory: (category: string) => EmojiEntry[];
-  hasLoaded: () => boolean;
-  waitForLoad: () => Promise<boolean>;
-  listAll: () => EmojiEntry[];
-  listCategories: () => string[];
-}
+const translateCategory = (categories: Record<string, string>, name: string): string =>
+  Obj.has(categories, name) ? categories[name] : name;
 
-const translateCategory = (categories: Record<string, string>, name: string) => Obj.has(categories, name) ? categories[name] : name;
-
-const getUserDefinedEmoticons = (editor: Editor) => {
-  const userDefinedEmoticons = Settings.getAppendedEmoticons(editor);
-  return Obj.map(userDefinedEmoticons, (value: RawEmojiEntry) =>
+const getUserDefinedEmoji = (editor: Editor): Record<string, RawEmojiEntry> => {
+  const userDefinedEmoticons = Options.getAppendedEmoji(editor);
+  return Obj.map(userDefinedEmoticons, (value) =>
     // Set some sane defaults for the custom emoji entry
     ({ keywords: [], category: 'user', ...value })
   );
@@ -58,10 +50,10 @@ const getUserDefinedEmoticons = (editor: Editor) => {
 
 // TODO: Consider how to share this loading across different editors
 const initDatabase = (editor: Editor, databaseUrl: string, databaseId: string): EmojiDatabase => {
-  const categories = Cell<Optional<Record<string, EmojiEntry[]>>>(Optional.none());
-  const all = Cell<Optional<EmojiEntry[]>>(Optional.none());
+  const categories = Singleton.value<Record<string, EmojiEntry[]>>();
+  const all = Singleton.value<EmojiEntry[]>();
 
-  const emojiImagesUrl = Settings.getEmotionsImageUrl(editor);
+  const emojiImagesUrl = Options.getEmojiImageUrl(editor);
 
   const getEmoji = (lib: RawEmojiEntry) => {
     // Note: This is a little hacky, but the database doesn't provide a way for us to tell what sort of database is being used
@@ -73,8 +65,8 @@ const initDatabase = (editor: Editor, databaseUrl: string, databaseId: string): 
   };
 
   const processEmojis = (emojis: Record<string, RawEmojiEntry>) => {
-    const cats = {};
-    const everything = [];
+    const cats: Record<string, EmojiEntry[]> = {};
+    const everything: EmojiEntry[] = [];
 
     Obj.each(emojis, (lib: RawEmojiEntry, title: string) => {
       const entry: EmojiEntry = {
@@ -89,19 +81,19 @@ const initDatabase = (editor: Editor, databaseUrl: string, databaseId: string): 
       everything.push(entry);
     });
 
-    categories.set(Optional.some(cats));
-    all.set(Optional.some(everything));
+    categories.set(cats);
+    all.set(everything);
   };
 
   editor.on('init', () => {
     Resource.load(databaseId, databaseUrl).then((emojis) => {
-      const userEmojis = getUserDefinedEmoticons(editor);
+      const userEmojis = getUserDefinedEmoji(editor);
       processEmojis(Merger.merge(emojis, userEmojis));
     }, (err) => {
       // eslint-disable-next-line no-console
-      console.log(`Failed to load emoticons: ${err}`);
-      categories.set(Optional.some({}));
-      all.set(Optional.some([]));
+      console.log(`Failed to load emojis: ${err}`);
+      categories.set({});
+      all.set([]);
     });
   });
 
@@ -124,16 +116,16 @@ const initDatabase = (editor: Editor, databaseUrl: string, databaseId: string): 
     } else {
       return new Promise((resolve, reject) => {
         let numRetries = 15;
-        const interval = Delay.setInterval(() => {
+        const interval = setInterval(() => {
           if (hasLoaded()) {
-            Delay.clearInterval(interval);
+            clearInterval(interval);
             resolve(true);
           } else {
             numRetries--;
             if (numRetries < 0) {
               // eslint-disable-next-line no-console
               console.log('Could not load emojis from url: ' + databaseUrl);
-              Delay.clearInterval(interval);
+              clearInterval(interval);
               reject(false);
             }
           }
@@ -142,7 +134,7 @@ const initDatabase = (editor: Editor, databaseUrl: string, databaseId: string): 
     }
   };
 
-  const hasLoaded = (): boolean => categories.get().isSome() && all.get().isSome();
+  const hasLoaded = (): boolean => categories.isSet() && all.isSet();
 
   return {
     listCategories,

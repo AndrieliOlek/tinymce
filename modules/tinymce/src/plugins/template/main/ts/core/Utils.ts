@@ -1,13 +1,10 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
+import { Arr, Obj } from '@ephox/katamari';
 
-import { Obj } from '@ephox/katamari';
+import DOMUtils from 'tinymce/core/api/dom/DOMUtils';
+import Editor from 'tinymce/core/api/Editor';
+import HtmlSerializer from 'tinymce/core/api/html/Serializer';
 
-const entitiesAttr = {
+const entitiesAttr: Record<string, string> = {
   '"': '&quot;',
   '<': '&lt;',
   '>': '&gt;',
@@ -15,8 +12,19 @@ const entitiesAttr = {
   '\'': '&#039;'
 };
 
-const htmlEscape = (html: string): string => html.replace(/["'<>&]/g, (match: string) => Obj.get<Record<string, string>, string>(entitiesAttr, match).getOr(match));
+const htmlEscape = (html: string): string =>
+  html.replace(/["'<>&]/g, (match) => Obj.get(entitiesAttr, match).getOr(match));
+
+const hasAnyClasses = (dom: DOMUtils, n: Element, classes: string): boolean =>
+  Arr.exists(classes.split(/\s+/), (c) => dom.hasClass(n, c));
+
+const parseAndSerialize = (editor: Editor, html: string): string =>
+  HtmlSerializer({ validate: true }, editor.schema).serialize(
+    editor.parser.parse(html, { insert: true })
+  );
 
 export {
-  htmlEscape
+  hasAnyClasses,
+  htmlEscape,
+  parseAndSerialize
 };

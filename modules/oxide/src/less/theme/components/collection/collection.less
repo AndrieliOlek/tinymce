@@ -1,18 +1,12 @@
 //
-// Copyright (c) Tiny Technologies, Inc. All rights reserved.
-// Licensed under the LGPL or a commercial license.
-// For LGPL see License.txt in the project root for license information.
-// For commercial licenses see https://www.tiny.cloud/
-//
-
-//
 // Collection
 // A list of items that can be arranged as vertical list, horizontal toolbar or a grid.
 //
 
 @collection-item-padding: @pad-xs @pad-sm;
-@collection-item-separator-color: contrast(@background-color, @border-color, lighten(@border-color, 10%));
+@collection-item-separator-color: @tinymce-separator-color;
 @collection-item-separator-margin-y: @pad-xs;
+@collection-item-radius: @toolbar-button-border-radius;
 
 @collection-item-label-font-size: @font-size-sm;
 @collection-item-label-font-style: normal;
@@ -21,6 +15,7 @@
 @collection-item-label-text-transform: none;
 
 @collection-item-label-disabled-text-color: fade(@collection-item-label-text-color, 50%);
+@collection-item-caret-disabled-text-color: fade(@collection-item-label-text-color, 50%);
 
 @collection-list-item-active-background-color: @toolbar-button-hover-background-color;
 @collection-list-item-label-active-text-color: contrast(@collection-list-item-active-background-color, @color-black, @color-white);
@@ -114,8 +109,8 @@
 
   .tox-collection__item {
     align-items: center;
+    border-radius: @collection-item-radius;
     color: @collection-item-label-text-color;
-    cursor: pointer;
     display: flex;
     -webkit-touch-callout: none;
     user-select: none;
@@ -172,13 +167,6 @@
     color: @collection-toolbar-item-label-active-text-color;
   }
 
-  // Disabled item
-  .tox-collection__item--state-disabled {
-    background-color: transparent;
-    color: @collection-item-label-disabled-text-color;
-    cursor: not-allowed;
-  }
-
   .tox-collection__item-icon,
   .tox-collection__item-checkmark {
     align-items: center;
@@ -201,7 +189,6 @@
     color: currentColor;
     display: inline-block;
     flex: 1;
-    -ms-flex-preferred-size: auto;
     font-size: @collection-item-label-font-size;
     font-style: @collection-item-label-font-style;
     font-weight: @collection-item-label-font-weight;
@@ -233,6 +220,17 @@
 
     svg {
       fill: @collection-item-label-text-color;
+    }
+  }
+
+  // Disabled item
+  .tox-collection__item--state-disabled {
+    background-color: transparent;
+    color: @collection-item-label-disabled-text-color;
+    cursor: not-allowed;
+
+    .tox-collection__item-caret svg {
+      fill: @collection-item-caret-disabled-text-color;
     }
   }
 
@@ -270,8 +268,8 @@
   }
 
   .tox-collection--horizontal .tox-collection__item {
-    height: @toolbar-button-height; // 24px
-    margin: @toolbar-button-spacing-y @toolbar-button-spacing-x (@toolbar-button-spacing-y + 1px) 0; // 2px 0 3px 0
+    height: @toolbar-button-height; // 28px
+    margin: (@toolbar-button-spacing-y + 1px) @toolbar-button-spacing-x @toolbar-button-spacing-y 0; // 4px 0 3px 0
     padding: 0 4px;
   }
 
@@ -382,13 +380,6 @@
   // Create a slight padding for lists containing no icons
   .tox-collection--list .tox-collection__item > .tox-collection__item-label:first-child {
     margin-right: @pad-xs;
-  }
-
-  .tox-collection__item-icon-rtl {
-    /* stylelint-disable-next-line no-descending-specificity */
-    .tox-collection__item-icon svg {
-      transform: rotateY(180deg);
-    }
   }
 
   .tox-collection__item-accessory {

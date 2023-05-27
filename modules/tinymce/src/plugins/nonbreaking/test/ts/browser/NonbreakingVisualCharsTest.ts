@@ -1,19 +1,18 @@
 import { ApproxStructure } from '@ephox/agar';
 import { beforeEach, describe, it } from '@ephox/bedrock-client';
 import { Unicode } from '@ephox/katamari';
-import { TinyAssertions, TinyHooks, TinyUiActions } from '@ephox/mcagar';
+import { TinyAssertions, TinyHooks, TinyUiActions } from '@ephox/wrap-mcagar';
 
 import Editor from 'tinymce/core/api/Editor';
 import NonbreakingPlugin from 'tinymce/plugins/nonbreaking/Plugin';
 import VisualCharsPlugin from 'tinymce/plugins/visualchars/Plugin';
-import Theme from 'tinymce/themes/silver/Theme';
 
 describe('browser.tinymce.plugins.nonbreaking.NonbreakingVisualCharsTest', () => {
   const hook = TinyHooks.bddSetup<Editor>({
     plugins: 'nonbreaking visualchars',
     toolbar: 'nonbreaking visualchars',
     base_url: '/project/tinymce/js/tinymce'
-  }, [ Theme, NonbreakingPlugin, VisualCharsPlugin ]);
+  }, [ NonbreakingPlugin, VisualCharsPlugin ]);
 
   beforeEach(() => {
     const editor = hook.editor();

@@ -1,20 +1,13 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Optional } from '@ephox/katamari';
 
 import Editor from 'tinymce/core/api/Editor';
 import { Dialog } from 'tinymce/core/api/ui/Ui';
 
-import { getRowClassList } from '../api/Settings';
-import * as Helpers from './Helpers';
+import * as Options from '../api/Options';
+import * as UiUtils from './UiUtils';
 
 const getClassList = (editor: Editor): Optional<Dialog.ListBoxSpec> => {
-  const classes = Helpers.buildListItems(getRowClassList(editor));
+  const classes = UiUtils.buildListItems(Options.getRowClassList(editor));
   if (classes.length > 0) {
     return Optional.some({
       name: 'class',
@@ -55,7 +48,8 @@ const formChildren: Dialog.BodyComponentSpec[] = [
   }
 ];
 
-const getItems = (editor: Editor) => formChildren.concat(getClassList(editor).toArray());
+const getItems = (editor: Editor): Dialog.BodyComponentSpec[] =>
+  formChildren.concat(getClassList(editor).toArray());
 
 export {
   getItems

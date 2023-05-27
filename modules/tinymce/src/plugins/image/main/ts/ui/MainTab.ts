@@ -1,15 +1,10 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Arr } from '@ephox/katamari';
+
+import { Dialog } from 'tinymce/core/api/ui/Ui';
 
 import { ImageDialogInfo, ListItem } from './DialogTypes';
 
-const makeItems = (info: ImageDialogInfo) => {
+const makeItems = (info: ImageDialogInfo): Dialog.BodyComponentSpec[] => {
   const imageUrl = {
     name: 'src',
     type: 'urlinput',
@@ -26,7 +21,7 @@ const makeItems = (info: ImageDialogInfo) => {
     name: 'alt',
     type: 'input',
     label: 'Alternative description',
-    disabled: info.hasAccessibilityOptions && info.image.isDecorative
+    enabled: !(info.hasAccessibilityOptions && info.image.isDecorative)
   };
   const imageTitle = {
     name: 'title',
@@ -91,7 +86,7 @@ const makeItems = (info: ImageDialogInfo) => {
   ]);
 };
 
-const makeTab = (info: ImageDialogInfo) => ({
+const makeTab = (info: ImageDialogInfo): Dialog.TabSpec => ({
   title: 'General',
   name: 'general',
   items: makeItems(info)

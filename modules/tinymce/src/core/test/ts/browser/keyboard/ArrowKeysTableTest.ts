@@ -1,17 +1,16 @@
 import { ApproxStructure, Keys, StructAssert } from '@ephox/agar';
 import { before, beforeEach, context, describe, it } from '@ephox/bedrock-client';
 import { Fun } from '@ephox/katamari';
-import { TinyAssertions, TinyContentActions, TinyHooks, TinySelections } from '@ephox/mcagar';
 import { PlatformDetection } from '@ephox/sand';
+import { TinyAssertions, TinyContentActions, TinyHooks, TinySelections } from '@ephox/wrap-mcagar';
 
 import Editor from 'tinymce/core/api/Editor';
-import Theme from 'tinymce/themes/silver/Theme';
 
 describe('browser.tinymce.core.keyboard.ArrowKeysTableTest', () => {
   const browser = PlatformDetection.detect().browser;
   const hook = TinyHooks.bddSetupLight<Editor>({
     base_url: '/project/tinymce/js/tinymce'
-  }, [ Theme ]);
+  }, []);
 
   const table = (html: string) => ApproxStructure.fromHtml('<table><tbody><tr><td>' + html + '</td></tr></tbody></table>');
   const block = ApproxStructure.fromHtml('<p><br></p>');
@@ -33,7 +32,7 @@ describe('browser.tinymce.core.keyboard.ArrowKeysTableTest', () => {
 
   context('FakeCaret before/after table', () => {
     before(function () {
-      if (!browser.isEdge() && !browser.isFirefox()) {
+      if (!browser.isFirefox()) {
         this.skip();
       }
     });

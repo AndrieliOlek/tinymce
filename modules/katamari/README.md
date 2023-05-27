@@ -32,7 +32,7 @@ Below is a list of commonly used parts of `katamari`
 
 ## Mutable Data Types
 
-- `Cell`: A mutable piece of data'
+- `Cell`: A mutable piece of data
 - `Singleton`: A mutable piece of optional data
 
 ## Algebraic Data Types
@@ -47,7 +47,7 @@ Below is a list of commonly used parts of `katamari`
 
 # Tests
 
-`katamari` uses [`bedrock`](https://www.npmjs.com/package/@ephox/bedrock) to run atomic tests. The tests are chiefly written using [jsverify](https://github.com/jsverify/jsverify)
+`katamari` uses [`bedrock`](https://www.npmjs.com/package/@ephox/bedrock) to run atomic tests. The tests are chiefly written using [fast-check](https://github.com/dubzzz/fast-check)
 
 ## Running Tests
 

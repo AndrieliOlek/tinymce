@@ -1,16 +1,14 @@
 import { UiFinder, Waiter } from '@ephox/agar';
 import { before, describe, it } from '@ephox/bedrock-client';
-import { McEditor, TinySelections, TinyUiActions } from '@ephox/mcagar';
 import { SugarBody } from '@ephox/sugar';
+import { McEditor, TinySelections, TinyUiActions } from '@ephox/wrap-mcagar';
 
 import Editor from 'tinymce/core/api/Editor';
 import Plugin from 'tinymce/plugins/table/Plugin';
-import Theme from 'tinymce/themes/silver/Theme';
 
 describe('browser.tinymce.plugins.table.TableToolbarTest', () => {
   before(() => {
     Plugin();
-    Theme();
   });
 
   const tableHtml = '<table><tbody><tr><td>x</td></tr></tbody></table>';

@@ -1,23 +1,20 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Arr, Optional } from '@ephox/katamari';
 
 import Editor from 'tinymce/core/api/Editor';
 import Delay from 'tinymce/core/api/util/Delay';
-import Promise from 'tinymce/core/api/util/Promise';
 
-import * as Settings from '../api/Settings';
+import * as Options from '../api/Options';
 import { AssumeExternalTargets } from '../api/Types';
 import * as Utils from '../core/Utils';
 import { LinkDialogOutput } from './DialogTypes';
 
+interface Transformer {
+  readonly message: string;
+  readonly preprocess: (d: LinkDialogOutput) => LinkDialogOutput;
+}
+
 // Delay confirm since onSubmit will move focus
-const delayedConfirm = (editor: Editor, message: string, callback: (state: boolean) => void) => {
+const delayedConfirm = (editor: Editor, message: string, callback: (state: boolean) => void): void => {
   const rng = editor.selection.getRng();
 
   Delay.setEditorTimeout(editor, () => {
@@ -27,11 +24,6 @@ const delayedConfirm = (editor: Editor, message: string, callback: (state: boole
     });
   });
 };
-
-interface Transformer {
-  message: string;
-  preprocess: (d: LinkDialogOutput) => LinkDialogOutput;
-}
 
 const tryEmailTransform = (data: LinkDialogOutput): Optional<Transformer> => {
   const url = data.href;
@@ -56,7 +48,7 @@ const tryProtocolTransform = (assumeExternalTargets: AssumeExternalTargets, defa
 };
 
 const preprocess = (editor: Editor, data: LinkDialogOutput): Promise<LinkDialogOutput> => Arr.findMap(
-  [ tryEmailTransform, tryProtocolTransform(Settings.assumeExternalTargets(editor), Settings.getDefaultLinkProtocol(editor)) ],
+  [ tryEmailTransform, tryProtocolTransform(Options.assumeExternalTargets(editor), Options.getDefaultLinkProtocol(editor)) ],
   (f) => f(data)
 ).fold(
   () => Promise.resolve(data),

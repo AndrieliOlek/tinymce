@@ -1,32 +1,34 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import Editor from 'tinymce/core/api/Editor';
+import { Menu, Toolbar } from 'tinymce/core/api/ui/Ui';
 
-import * as Templates from '../core/Templates';
-import * as Dialog from './Dialog';
+const onSetupEditable = (editor: Editor) => (api: Toolbar.ToolbarButtonInstanceApi | Menu.MenuItemInstanceApi): VoidFunction => {
+  const nodeChanged = () => {
+    api.setEnabled(editor.selection.isEditable());
+  };
 
-const showDialog = (editor: Editor) => {
-  return (templates) => {
-    Dialog.open(editor, templates);
+  editor.on('NodeChange', nodeChanged);
+  nodeChanged();
+
+  return () => {
+    editor.off('NodeChange', nodeChanged);
   };
 };
 
-const register = (editor: Editor) => {
+const register = (editor: Editor): void => {
+  const onAction = () => editor.execCommand('mceTemplate');
+
   editor.ui.registry.addButton('template', {
     icon: 'template',
     tooltip: 'Insert template',
-    onAction: Templates.createTemplateList(editor, showDialog(editor))
+    onSetup: onSetupEditable(editor),
+    onAction
   });
 
   editor.ui.registry.addMenuItem('template', {
     icon: 'template',
     text: 'Insert template...',
-    onAction: Templates.createTemplateList(editor, showDialog(editor))
+    onSetup: onSetupEditable(editor),
+    onAction
   });
 };
 

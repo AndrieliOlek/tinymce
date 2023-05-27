@@ -13,7 +13,7 @@ import * as ChainUtils from 'ephox/alloy/test/ChainUtils';
 
 UnitTest.asynctest('HighlightingTest', (success, failure) => {
 
-  GuiSetup.setup((_store, _doc, _body) => {
+  GuiSetup.setup((store, _doc, _body) => {
     const makeItem = (name: string) => Container.sketch({
       dom: {
         tag: 'span',
@@ -26,7 +26,10 @@ UnitTest.asynctest('HighlightingTest', (success, failure) => {
           'vertical-align': 'middle'
         },
         innerHtml: name,
-        classes: [ name, 'test-item' ]
+        classes: [ name, 'test-item' ],
+        attributes: {
+          'data-value': name
+        }
       }
     });
     return GuiFactory.build(
@@ -34,7 +37,19 @@ UnitTest.asynctest('HighlightingTest', (success, failure) => {
         containerBehaviours: Behaviour.derive([
           Highlighting.config({
             highlightClass: 'test-selected',
-            itemClass: 'test-item'
+            itemClass: 'test-item',
+
+            onHighlight: (containerComp, itemComp) => {
+              store.adder(
+                `onHighlight: ${Attribute.get(itemComp.element, 'data-value')}`
+              )();
+            },
+
+            onDehighlight: (containerComp, itemComp) => {
+              store.adder(
+                `onDehighlight: ${Attribute.get(itemComp.element, 'data-value')}`
+              )();
+            },
           })
         ]),
         components: Arr.map([
@@ -45,7 +60,7 @@ UnitTest.asynctest('HighlightingTest', (success, failure) => {
       })
     );
 
-  }, (_doc, _body, _gui, component, _store) => {
+  }, (_doc, _body, _gui, component, store) => {
     const cCheckNum = (label: string, expected: number) => Chain.fromChains([
       Chain.mapper((array) => array.length),
       Assertions.cAssertEq(label, expected)
@@ -102,13 +117,13 @@ UnitTest.asynctest('HighlightingTest', (success, failure) => {
 
     const cIsHighlighted = Chain.mapper((item) => Highlighting.isHighlighted(component, item));
 
-    const cGetHighlightedOrDie = Chain.binder(() => Highlighting.getHighlighted(component).fold(() => Result.error(new Error('getHighlighted did not find a selection')), Result.value));
+    const cGetHighlightedOrDie = Chain.binder(() => Highlighting.getHighlighted(component).fold(() => Result.error<AlloyComponent, Error>(new Error('getHighlighted did not find a selection')), Result.value));
 
     const cGetHighlightedIsNone = Chain.binder((v) => Highlighting.getHighlighted(component).fold(() => Result.value(v), (comp) => Result.error('Highlighted value should be nothing. Was: ' + Truncate.getHtml(comp.element))));
 
-    const cGetFirst = Chain.binder(() => Highlighting.getFirst(component).fold(() => Result.error(new Error('getFirst found nothing')), Result.value));
+    const cGetFirst = Chain.binder(() => Highlighting.getFirst(component).fold(() => Result.error<AlloyComponent, Error>(new Error('getFirst found nothing')), Result.value));
 
-    const cGetLast = Chain.binder(() => Highlighting.getLast(component).fold(() => Result.error(new Error('getLast found nothing')), Result.value));
+    const cGetLast = Chain.binder(() => Highlighting.getLast(component).fold(() => Result.error<AlloyComponent, Error>(new Error('getLast found nothing')), Result.value));
 
     const cHasClass = (clazz: string) => Chain.binder((comp: AlloyComponent) => {
       const elem = comp.element;
@@ -132,6 +147,8 @@ UnitTest.asynctest('HighlightingTest', (success, failure) => {
           cCheckNumOf('Should be none selected', '.test-selected', 0),
           cCheckNumOf('Should be three items', '.test-item', 3),
 
+          store.cAssertEq('Store should be empty', [ ]),
+
           NamedChain.write('first', cGetFirst),
           NamedChain.write('last', cGetLast),
 
@@ -140,32 +157,68 @@ UnitTest.asynctest('HighlightingTest', (success, failure) => {
 
           cHighlightFirst,
           cCheckSelected('highlightFirst => Alpha is selected', 'alpha'),
+          store.cAssertEq('No highlights -> Highlighting alpha', [
+            'onHighlight: alpha'
+          ]),
+          store.cClear,
 
           cHighlightLast,
           cCheckSelected('highlightLast => Gamma is selected', 'gamma'),
+          store.cAssertEq('Highlighting alpha -> Highlighting gamma', [
+            'onDehighlight: alpha',
+            'onHighlight: gamma'
+          ]),
+          store.cClear,
 
           NamedChain.direct('beta', cHighlight, '_'),
           cCheckSelected('highlight(beta) => Beta is selected', 'beta'),
+          store.cAssertEq('Highlighting gamma -> Highlighting beta', [
+            'onDehighlight: gamma',
+            'onHighlight: beta'
+          ]),
+          store.cClear,
 
           NamedChain.direct('beta', cDehighlight, '_'),
           cCheckNumOf('beta should be deselected', '.test-selected', 0),
+          store.cAssertEq('Highlighting beta -> No highlights', [
+            'onDehighlight: beta'
+          ]),
+          store.cClear,
 
           cHighlightAt(1),
-          cCheckSelected('highlightAt(compontent, 1) => Beta is selected', 'beta'),
+          cCheckSelected('highlightAt(component, 1) => Beta is selected', 'beta'),
+          store.cAssertEq('No highlights -> Highlighting beta', [
+            'onHighlight: beta'
+          ]),
+          store.cClear,
 
           cHighlightAtError(6),
+          store.cAssertEq('Highlighting beta -> error', [ ]),
 
           cHighlightFirst,
           cCheckSelected('highlightFirst => Alpha is selected', 'alpha'),
+          store.cAssertEq('Highlighting beta -> Highlighting alpha', [
+            'onDehighlight: beta',
+            'onHighlight: alpha'
+          ]),
+          store.cClear,
+
           cDehighlightAll,
           cCheckNumOf('everything should be deselected', '.test-selected', 0),
+          store.cAssertEq('Highlighting alpha -> No highlights', [
+            'onDehighlight: alpha'
+          ]),
+          store.cClear,
 
           cHighlightLast,
           NamedChain.direct('beta', cIsHighlighted, 'beta-is'),
           NamedChain.direct('beta-is', Assertions.cAssertEq('isHighlighted(beta)', false), '_'),
-
           NamedChain.direct('gamma', cIsHighlighted, 'gamma-is'),
           NamedChain.direct('gamma-is', Assertions.cAssertEq('isHighlighted(gamma)', true), '_'),
+          store.cAssertEq('No highlights -> Highlighting gamma', [
+            'onHighlight: gamma'
+          ]),
+          store.cClear,
 
           NamedChain.direct('container', cGetHighlightedOrDie, 'highlighted-comp'),
           NamedChain.direct('highlighted-comp', cHasClass('gamma'), '_'),
@@ -176,8 +229,29 @@ UnitTest.asynctest('HighlightingTest', (success, failure) => {
           Chain.op((_input) => {
             Highlighting.highlightBy(component, (comp) => Class.has(comp.element, 'beta'));
           }),
-
+          store.cAssertEq('Highlighting gamma -> Highlighting beta', [
+            'onDehighlight: gamma',
+            'onHighlight: beta'
+          ]),
+          store.cClear,
           NamedChain.direct('container', cGetHighlightedOrDie, 'blah'),
+
+          // Now we test the unusual cases of Highlighting the same thing
+          NamedChain.direct('beta', cHighlight, '_'),
+          store.cAssertEq('Highlighting beta -> Highlighting beta', [ ]),
+          store.cClear,
+
+          // And the especially unusual case of Highlighting the same thing, after
+          // something else has somehow also received the highlight class
+          NamedChain.direct('gamma', Chain.op((gamma) => {
+            Class.add(gamma.element, 'test-selected');
+          }), '_'),
+          NamedChain.direct('beta', cHighlight, '_'),
+          store.cAssertEq(
+            'Highlighting beta (+ gamma somehow has highlight) -> Highlighting beta',
+            [ 'onDehighlight: gamma' ]
+          ),
+          store.cClear,
 
           NamedChain.bundle((output) => {
             const candidates = Highlighting.getCandidates(component);

@@ -1,31 +1,26 @@
-/**
- * Copyright (c) Tiny Technologies, Inc. All rights reserved.
- * Licensed under the LGPL or a commercial license.
- * For LGPL see License.txt in the project root for license information.
- * For commercial licenses see https://www.tiny.cloud/
- */
-
 import { Fun, Optional, Unicode } from '@ephox/katamari';
 import { SugarElement } from '@ephox/sugar';
 
+import DOMUtils from '../api/dom/DOMUtils';
 import DomTreeWalker from '../api/dom/TreeWalker';
 import Editor from '../api/Editor';
 import * as ElementType from '../dom/ElementType';
 import * as NodeType from '../dom/NodeType';
 import * as ScrollIntoView from '../dom/ScrollIntoView';
 
-const firstNonWhiteSpaceNodeSibling = (node) => {
+const firstNonWhiteSpaceNodeSibling = (node: Node | null): Node | null => {
   while (node) {
-    if (node.nodeType === 1 || (node.nodeType === 3 && node.data && /[\r\n\s]/.test(node.data))) {
+    if (NodeType.isElement(node) || (NodeType.isText(node) && node.data && /[\r\n\s]/.test(node.data))) {
       return node;
     }
 
     node = node.nextSibling;
   }
+
+  return null;
 };
 
-const moveToCaretPosition = (editor: Editor, root) => {
-  let node, lastNode = root;
+const moveToCaretPosition = (editor: Editor, root: Node): void => {
   const dom = editor.dom;
   const moveCaretBeforeOnEnterElementsMap = editor.schema.getMoveCaretBeforeOnEnterElements();
 
@@ -46,6 +41,8 @@ const moveToCaretPosition = (editor: Editor, root) => {
 
   if (root.hasChildNodes()) {
     const walker = new DomTreeWalker(root, root);
+    let lastNode = root;
+    let node: Node | null | undefined;
 
     while ((node = walker.current())) {
       if (NodeType.isText(node)) {
@@ -87,15 +84,15 @@ const moveToCaretPosition = (editor: Editor, root) => {
   ScrollIntoView.scrollRangeIntoView(editor, rng);
 };
 
-const getEditableRoot = (dom, node) => {
+const getEditableRoot = (dom: DOMUtils, node: Node): HTMLElement | undefined => {
   const root = dom.getRoot();
-  let parent, editableRoot;
+  let editableRoot: HTMLElement | undefined;
 
   // Get all parents until we hit a non editable parent or the root
-  parent = node;
-  while (parent !== root && dom.getContentEditable(parent) !== 'false') {
+  let parent: Node | null = node;
+  while (parent !== root && parent && dom.getContentEditable(parent) !== 'false') {
     if (dom.getContentEditable(parent) === 'true') {
-      editableRoot = parent;
+      editableRoot = parent as HTMLElement;
     }
 
     parent = parent.parentNode;
@@ -104,11 +101,11 @@ const getEditableRoot = (dom, node) => {
   return parent !== root ? editableRoot : root;
 };
 
-const getParentBlock = (editor: Editor) => {
+const getParentBlock = (editor: Editor): Optional<Element> => {
   return Optional.from(editor.dom.getParent(editor.selection.getStart(true), editor.dom.isBlock));
 };
 
-const getParentBlockName = (editor: Editor) => {
+const getParentBlockName = (editor: Editor): string => {
   return getParentBlock(editor).fold(
     Fun.constant(''),
     (parentBlock) => {
@@ -117,7 +114,7 @@ const getParentBlockName = (editor: Editor) => {
   );
 };
 
-const isListItemParentBlock = (editor: Editor) => {
+const isListItemParentBlock = (editor: Editor): boolean => {
   return getParentBlock(editor).filter((elm) => {
     return ElementType.isListItem(SugarElement.fromDom(elm));
   }).isSome();

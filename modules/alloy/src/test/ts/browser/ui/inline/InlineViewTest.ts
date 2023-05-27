@@ -10,6 +10,7 @@ import { Container } from 'ephox/alloy/api/ui/Container';
 import { Dropdown } from 'ephox/alloy/api/ui/Dropdown';
 import { InlineView } from 'ephox/alloy/api/ui/InlineView';
 import { tieredMenu as TieredMenu } from 'ephox/alloy/api/ui/TieredMenu';
+import { TestItem } from 'ephox/alloy/test/dropdown/TestDropdownMenu';
 import * as TestDropdownMenu from 'ephox/alloy/test/dropdown/TestDropdownMenu';
 import * as Sinks from 'ephox/alloy/test/Sinks';
 import * as TestBroadcasts from 'ephox/alloy/test/TestBroadcasts';
@@ -88,14 +89,16 @@ UnitTest.asynctest('InlineViewTest', (success, failure) => {
       ),
 
       Step.sync(() => {
-        InlineView.showAt(inline, {
-          anchor: 'selection',
-          root: gui.element
-        }, Container.sketch({
+        InlineView.showAt(inline, Container.sketch({
           dom: {
             innerHtml: 'Inner HTML'
           }
-        }));
+        }), {
+          anchor: {
+            type: 'selection',
+            root: gui.element
+          }
+        });
       }),
       sCheckOpen('After show'),
 
@@ -159,15 +162,17 @@ UnitTest.asynctest('InlineViewTest', (success, failure) => {
       sCheckClosed('After hide'),
 
       Step.sync(() => {
-        InlineView.showAt(inline, {
-          anchor: 'makeshift',
-          x: 50,
-          y: 50
-        }, Container.sketch({
+        InlineView.showAt(inline, Container.sketch({
           dom: {
             innerHtml: 'Inner HTML'
           }
-        }));
+        }), {
+          anchor: {
+            type: 'makeshift',
+            x: 50,
+            y: 50
+          }
+        });
       }),
       sCheckOpen('After show'),
 
@@ -206,7 +211,7 @@ UnitTest.asynctest('InlineViewTest', (success, failure) => {
               menu: TestDropdownMenu.part(store)
             },
             fetch: () => {
-              const future = Future.pure([
+              const future = Future.pure<TestItem[]>([
                 { type: 'item', data: { value: optionPrefix.toLowerCase() + '-1', meta: { text: optionPrefix + '-1' }}},
                 { type: 'item', data: { value: optionPrefix.toLowerCase() + '-2' + buttonText, meta: { text: optionPrefix + '-2' }}}
               ]);
@@ -221,10 +226,7 @@ UnitTest.asynctest('InlineViewTest', (success, failure) => {
             }
           });
 
-          InlineView.showAt(inline, {
-            anchor: 'selection',
-            root: gui.element
-          }, Container.sketch({
+          InlineView.showAt(inline, Container.sketch({
             components: [
               Button.sketch({ uid: 'bold-button', dom: { tag: 'button', innerHtml: 'B', classes: [ 'bold-button' ] }, action: store.adder('bold') }),
               Button.sketch({ uid: 'italic-button', dom: { tag: 'button', innerHtml: 'I', classes: [ 'italic-button' ] }, action: store.adder('italic') }),
@@ -232,7 +234,12 @@ UnitTest.asynctest('InlineViewTest', (success, failure) => {
               buildDropdown('+', 'Option'),
               buildDropdown('-', 'Item')
             ]
-          }));
+          }), {
+            anchor: {
+              type: 'selection',
+              root: gui.element
+            }
+          });
         })
       ),
 
